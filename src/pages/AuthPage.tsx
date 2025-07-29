@@ -140,7 +140,7 @@ const AuthPage: React.FC = () => {
 
       <header className="text-center mb-8">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-[#d93327] rounded-2xl mb-6 shadow-lg shadow-red-900/20"><BookOpen className="w-10 h-10 text-white" /></div>
-        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#d93327] to-red-500 bg-clip-text text-transparent mb-2">ระบบคลังข้อสอบออนไลน์</h1>
+        <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#d93327] to-red-500 bg-clip-text text-transparent mb-2">คลังข้อสอบออนไลน์ MASARU</h1>
         <p className="text-lg text-gray-400">พัฒนาทักษะและความรู้ของคุณได้ทุกที่ ทุกเวลา</p>
       </header>
 
