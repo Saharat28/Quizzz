@@ -177,16 +177,51 @@ const AddQuestion: React.FC = () => {
     fileInputRef.current?.click();
   };
 
+  // --- แก้ไขฟังก์ชันดาวน์โหลดแม่แบบ ---
   const handleDownloadTemplate = () => {
-    const headers = ['setId', 'type', 'text', 'options', 'correctAnswer', 'imageUrl'];
+    const headers = ['setId', 'type', 'text', 'correctAnswer', 'imageUrl', 'option1', 'option2', 'option3', 'option4', 'option5', 'option6'];
     const exampleData = [
-        { setId: 'คัดลอก ID จากชีท Available Quiz Set IDs มาวางที่นี่', type: 'multiple_choice_single', text: 'พระอาทิตย์ขึ้นทางทิศไหน?', options: 'ตะวันออก,ตะวันตก,เหนือ,ใต้', correctAnswer: 'ตะวันออก', imageUrl: 'https://example.com/sun.png' },
-        { setId: 'คัดลอก ID จากชีท Available Quiz Set IDs มาวางที่นี่', type: 'multiple_choice_multiple', text: 'ข้อใดคือส่วนประกอบของน้ำ?', options: 'ออกซิเจน,ไนโตรเจน,ไฮโดรเจน,คาร์บอน', correctAnswer: 'ออกซิเจน,ไฮโดรเจน', imageUrl: '' },
-        { setId: 'คัดลอก ID จากชีท Available Quiz Set IDs มาวางที่นี่', type: 'true_false', text: 'ประเทศไทยมี 77 จังหวัด', options: 'ถูก,ผิด', correctAnswer: 'ถูก', imageUrl: '' },
-        { setId: 'คัดลอก ID จากชีท Available Quiz Set IDs มาวางที่นี่', type: 'fill_in_blank', text: 'เมืองหลวงของประเทศไทยคืออะไร?', options: '', correctAnswer: 'กรุงเทพมหานคร', imageUrl: '' }
+        {
+            setId: 'คัดลอก ID จากชีทถัดไปมาวางที่นี่',
+            type: 'multiple_choice_single',
+            text: 'พระอาทิตย์ขึ้นทางทิศไหน?',
+            correctAnswer: 'ตะวันออก',
+            imageUrl: 'https://example.com/sun.png',
+            option1: 'ตะวันออก',
+            option2: 'ตะวันตก',
+            option3: 'เหนือ',
+            option4: 'ใต้',
+        },
+        {
+            setId: 'คัดลอก ID จากชีทถัดไปมาวางที่นี่',
+            type: 'multiple_choice_multiple',
+            text: 'ข้อใดคือส่วนประกอบของน้ำ?',
+            correctAnswer: 'ออกซิเจน,ไฮโดรเจน',
+            imageUrl: '',
+            option1: 'ออกซิเจน',
+            option2: 'ไนโตรเจน',
+            option3: 'ไฮโดรเจน',
+            option4: 'คาร์บอน',
+        },
+        {
+            setId: 'คัดลอก ID จากชีทถัดไปมาวางที่นี่',
+            type: 'true_false',
+            text: 'ประเทศไทยมี 77 จังหวัด',
+            correctAnswer: 'ถูก',
+            imageUrl: '',
+            option1: 'ถูก',
+            option2: 'ผิด',
+        },
+        {
+            setId: 'คัดลอก ID จากชีทถัดไปมาวางที่นี่',
+            type: 'fill_in_blank',
+            text: 'เมืองหลวงของประเทศไทยคืออะไร?',
+            correctAnswer: 'กรุงเทพมหานคร',
+            imageUrl: '',
+        }
     ];
     const wsTemplate = XLSX.utils.json_to_sheet(exampleData, { header: headers });
-    wsTemplate['!cols'] = [ { wch: 40 }, { wch: 30 }, { wch: 50 }, { wch: 40 }, { wch: 40 }, { wch: 30 }];
+    wsTemplate['!cols'] = [ { wch: 30 }, { wch: 25 }, { wch: 50 }, { wch: 30 }, { wch: 30 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
 
     const availableSetsData = quizSets.map(set => ({ 'Quiz Set Name': set.name, 'Quiz Set ID': set.id }));
     const wsSets = XLSX.utils.json_to_sheet(availableSetsData);
@@ -199,11 +234,14 @@ const AddQuestion: React.FC = () => {
     XLSX.writeFile(workbook, 'Question_Template_with_IDs.xlsx');
   };
 
+  // --- แก้ไขฟังก์ชันอ่านไฟล์ ---
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
+
     setIsImporting(true);
     const reader = new FileReader();
+
     reader.onload = async (e) => {
         try {
             const data = e.target?.result;
@@ -211,7 +249,9 @@ const AddQuestion: React.FC = () => {
             const sheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[sheetName];
             const json = XLSX.utils.sheet_to_json(worksheet) as any[];
+
             if (json.length === 0) { throw new Error('ไม่พบข้อมูลในไฟล์ Excel'); }
+
             const newQuestions: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>[] = [];
             for (let i = 0; i < json.length; i++) {
                 const row = json[i];
@@ -219,22 +259,34 @@ const AddQuestion: React.FC = () => {
                 if (!row.setId || !row.type || !row.text || !row.correctAnswer) {
                     throw new Error(`ข้อมูลแถวที่ ${rowNum} ไม่สมบูรณ์ กรุณาตรวจสอบคอลัมน์ setId, type, text, correctAnswer`);
                 }
+
+                // รวบรวม options จากคอลัมน์ option1, option2, ...
+                const options = [];
+                for (let j = 1; j <= 10; j++) { // รองรับสูงสุด 10 ตัวเลือก
+                    if (row[`option${j}`]) {
+                        options.push(String(row[`option${j}`]).trim());
+                    }
+                }
+
                 const question: any = {
                     setId: String(row.setId).trim(),
                     type: String(row.type).trim() as QuestionType,
                     text: String(row.text).trim(),
                     imageUrl: row.imageUrl ? String(row.imageUrl).trim() : '',
+                    options: options,
                 };
-                if (['multiple_choice_single', 'multiple_choice_multiple', 'true_false'].includes(question.type)) {
-                    if (!row.options || typeof row.options !== 'string') throw new Error(`แถวที่ ${rowNum}: คอลัมน์ options ไม่ถูกต้อง`);
-                    question.options = row.options.split(',').map((opt: string) => opt.trim());
-                }
+
                 if (question.type === 'multiple_choice_multiple') {
                     if (typeof row.correctAnswer !== 'string') throw new Error(`แถวที่ ${rowNum}: correctAnswer สำหรับ multiple_choice_multiple ต้องคั่นด้วยจุลภาค`);
                     question.correctAnswer = row.correctAnswer.split(',').map((ans: string) => ans.trim());
                 } else {
                     question.correctAnswer = String(row.correctAnswer).trim();
                 }
+
+                if (['multiple_choice_single', 'multiple_choice_multiple', 'true_false'].includes(question.type) && options.length === 0) {
+                    throw new Error(`แถวที่ ${rowNum}: คำถามประเภทนี้ต้องมีอย่างน้อย 1 ตัวเลือกในคอลัมน์ option`);
+                }
+                
                 newQuestions.push(question);
             }
             showConfirmation('ยืนยันการนำเข้า', `พบคำถาม ${newQuestions.length} ข้อ คุณต้องการนำเข้าทั้งหมดใช่หรือไม่?`, async () => {
