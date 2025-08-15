@@ -28,8 +28,8 @@ const QuestionRenderer: React.FC<{
 
     const renderQuestionBody = () => {
         switch (question.type) {
-            case 'mcq-s':
-            case 'tf':
+            case 'multiple_choice_single':
+            case 'true_false':
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {question.options?.map((option, optIndex) => (
@@ -39,7 +39,7 @@ const QuestionRenderer: React.FC<{
                         ))}
                     </div>
                 );
-            case 'mcq-m':
+            case 'multiple_choice_multiple':
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {question.options?.map((option, optIndex) => (
@@ -50,7 +50,7 @@ const QuestionRenderer: React.FC<{
                         ))}
                     </div>
                 );
-            case 'fib':
+            case 'fill_in_blank':
                 return (
                     <input 
                         type="text"
@@ -112,12 +112,12 @@ const Quiz: React.FC = () => {
     const checkAnswer = (question: FirebaseQuestion, userAnswer: any): boolean => {
         if (userAnswer === undefined || userAnswer === null) return false;
         switch (question.type) {
-            case 'mcq-s':
-            case 'tf':
+            case 'multiple_choice_single':
+            case 'true_false':
                 return userAnswer === question.correctAnswer;
-            case 'fib':
+            case 'fill_in_blank':
                 return typeof userAnswer === 'string' && userAnswer.trim() === question.correctAnswer;
-            case 'mcq-m':
+            case 'multiple_choice_multiple':
                 return Array.isArray(userAnswer) && Array.isArray(question.correctAnswer) && isEqual([...userAnswer].sort(), [...question.correctAnswer].sort());
             default:
                 return false;

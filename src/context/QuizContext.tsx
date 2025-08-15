@@ -21,10 +21,12 @@ interface QuizContextType {
   updateQuizSet: (id: string, updates: Partial<FirebaseQuizSet>) => Promise<void>;
   deleteQuizSet: (id: string) => Promise<void>;
   addQuestion: (question: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>) => Promise<string>;
+  addMultipleQuestions: (questions: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>[]) => Promise<void>;
   updateQuestion: (id: string, updates: Partial<FirebaseQuestion>) => Promise<void>;
   deleteQuestion: (id: string) => Promise<void>;
+  deleteMultipleQuestions: (ids: string[]) => Promise<void>;
   updateQuestionStats: (id: string, isCorrect: boolean) => Promise<void>;
-  addScore: (score: Omit<FirebaseScore, 'id' | 'timestamp'>) => Promise<string | void>; // Updated return type
+  addScore: (score: Omit<FirebaseScore, 'id' | 'timestamp'>) => Promise<string | void>;
   deleteScore: (id: string) => Promise<void>;
   getQuestionsBySetId: (setId: string) => FirebaseQuestion[];
   getScoresBySetId: (setId: string) => FirebaseScore[];
@@ -40,7 +42,7 @@ export const QuizProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo(() => ({ ...firebaseData }), [firebaseData]);
   
   return (
-    <QuizContext.Provider value={value}>
+    <QuizContext.Provider value={value as QuizContextType}>
       {children}
     </QuizContext.Provider>
   );

@@ -87,6 +87,12 @@ export const useFirebaseData = () => {
     return id;
   }, [loadAllData]);
 
+  // --- เพิ่มฟังก์ชันนี้ที่หายไป ---
+  const addMultipleQuestions = useCallback(async (questions: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>[]) => {
+    await questionsService.addMultiple(questions);
+    await loadAllData();
+  }, [loadAllData]);
+
   const updateQuestion = useCallback(async (id: string, updates: Partial<FirebaseQuestion>) => {
     await questionsService.update(id, updates);
     setQuestions(prev => prev.map(q => (q.id === id ? { ...q, ...updates } : q)));
@@ -95,6 +101,11 @@ export const useFirebaseData = () => {
   const deleteQuestion = useCallback(async (id: string) => {
     await questionsService.delete(id);
     await loadAllData();
+  }, [loadAllData]);
+  
+  const deleteMultipleQuestions = useCallback(async (ids: string[]) => {
+    await questionsService.deleteMultiple(ids);
+    await loadAllData(); 
   }, [loadAllData]);
 
   const updateQuestionStats = useCallback(async (id: string, isCorrect: boolean) => {
@@ -144,7 +155,12 @@ export const useFirebaseData = () => {
     departments, quizSets, questions, scores, loading, error,
     addDepartment, updateDepartment, deleteDepartment,
     addQuizSet, updateQuizSet, deleteQuizSet,
-    addQuestion, updateQuestion, deleteQuestion, updateQuestionStats,
+    addQuestion,
+    addMultipleQuestions, // <-- เพิ่มกลับเข้ามาใน return
+    updateQuestion,
+    deleteQuestion,
+    deleteMultipleQuestions,
+    updateQuestionStats,
     addScore,
     deleteScore,
     getQuestionsBySetId, getScoresBySetId,

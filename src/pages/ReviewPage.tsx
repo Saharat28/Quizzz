@@ -10,12 +10,12 @@ import { isEqual } from 'lodash';
 const checkAnswer = (question: FirebaseQuestion, userAnswer: any): boolean => {
     if (userAnswer === undefined || userAnswer === null) return false;
     switch (question.type) {
-        case 'mcq-s':
-        case 'tf':
+        case 'multiple_choice_single':
+        case 'true_false':
             return userAnswer === question.correctAnswer;
-        case 'fib':
+        case 'fill_in_blank':
             return typeof userAnswer === 'string' && userAnswer.trim() === question.correctAnswer;
-        case 'mcq-m':
+        case 'multiple_choice_multiple':
             return Array.isArray(userAnswer) && Array.isArray(question.correctAnswer) && isEqual([...userAnswer].sort(), [...question.correctAnswer].sort());
         default:
             return false;
