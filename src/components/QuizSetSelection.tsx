@@ -10,13 +10,12 @@ interface QuizSetSelectionProps {
 
 const QuizSetSelection: React.FC<QuizSetSelectionProps> = ({ userRole }) => {
   const navigate = useNavigate();
-  const { quizSets, getQuestionsBySetId } = useQuizContext();
+  const { quizSets } = useQuizContext();
   
   const activeSets: FirebaseQuizSet[] = quizSets.filter(set => set.isActive && set.name);
 
   return (
     <div className="max-w-6xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <button onClick={() => navigate('/')} className="flex items-center space-x-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors">
           <ArrowLeft className="w-5 h-5" />
@@ -32,13 +31,12 @@ const QuizSetSelection: React.FC<QuizSetSelectionProps> = ({ userRole }) => {
             <Settings className="w-4 h-4" />
             <span>จัดการชุดข้อสอบ</span>
           </button>
-        ) : <div className="w-40"></div>} {/* Placeholder for alignment */}
+        ) : <div className="w-40"></div>}
       </div>
 
-      {/* Quiz Sets Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {activeSets.map((set) => {
-          const questionCount = getQuestionsBySetId(set.id!).length;
+          const questionCount = set.questionCount || 0;
           
           return (
             <div 
@@ -82,7 +80,6 @@ const QuizSetSelection: React.FC<QuizSetSelectionProps> = ({ userRole }) => {
         })}
       </div>
 
-      {/* Empty State */}
       {activeSets.length === 0 && (
         <div className="text-center py-16">
           <BookOpen className="w-16 h-16 text-gray-400 dark:text-gray-700 mx-auto mb-4" />

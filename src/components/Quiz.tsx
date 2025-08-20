@@ -20,35 +20,23 @@ const QuestionRenderer: React.FC<{
     const isCorrect = hasAnswered ? checkAnswer(question, userAnswer) : false;
 
     const getOptionStyle = (option: string) => {
-        // --- Default and Selected Styles ---
         if (!instantFeedback || !hasAnswered) {
              return userAnswer === option || (Array.isArray(userAnswer) && userAnswer.includes(option))
-                ? 'border-red-500 bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500/50' // Selected
-                : 'border-gray-300 hover:border-red-400 hover:bg-red-50 dark:border-gray-700 dark:hover:border-red-500/50 dark:hover:bg-red-900/20'; // Default
+                ? 'border-red-500 bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500/50'
+                : 'border-gray-300 hover:border-red-400 hover:bg-red-50 dark:border-gray-700 dark:hover:border-red-500/50 dark:hover:bg-red-900/20';
         }
-
-        // --- Instant Feedback Styles ---
         const isThisOptionCorrect = checkAnswer(question, option);
         const isThisOptionSelected = userAnswer === option || (Array.isArray(userAnswer) && userAnswer.includes(option));
 
-        if (isThisOptionCorrect) {
-            return 'border-green-500 bg-green-100 dark:bg-green-900/30 ring-2 ring-green-500/50'; // Correct Answer
-        }
-        if (isThisOptionSelected && !isThisOptionCorrect) {
-            return 'border-red-500 bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500/50'; // Incorrectly Selected
-        }
-        return 'border-gray-300 opacity-60 dark:border-gray-700'; // Not selected, not correct
+        if (isThisOptionCorrect) return 'border-green-500 bg-green-100 dark:bg-green-900/30 ring-2 ring-green-500/50';
+        if (isThisOptionSelected && !isThisOptionCorrect) return 'border-red-500 bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500/50';
+        return 'border-gray-300 opacity-60 dark:border-gray-700';
     };
 
     const handleMcqMultipleChange = (option: string) => {
         if (instantFeedback && hasAnswered) return;
         const currentAnswers = Array.isArray(userAnswer) ? [...userAnswer] : [];
-        let newAnswers;
-        if (currentAnswers.includes(option)) {
-            newAnswers = currentAnswers.filter(ans => ans !== option);
-        } else {
-            newAnswers = [...currentAnswers, option];
-        }
+        let newAnswers = currentAnswers.includes(option) ? currentAnswers.filter(ans => ans !== option) : [...currentAnswers, option];
         onAnswer(question.id!, newAnswers.sort());
     };
 
@@ -116,7 +104,6 @@ const QuestionRenderer: React.FC<{
     );
 };
 
-
 const Quiz: React.FC = () => {
     const navigate = useNavigate();
     const { setId } = useParams<{ setId: string }>();
@@ -161,33 +148,12 @@ const Quiz: React.FC = () => {
 
         try {
             let rawScore = 0;
-            questions.forEach(q => {
-                if (checkAnswer(q, answers[q.id!])) {
-                    rawScore++;
-                }
-            });
-
+            questions.forEach(q => { if (checkAnswer(q, answers[q.id!])) { rawScore++; } });
             const finalScore = Math.max(0, rawScore - penaltyPoints);
             const totalQuestions = questions.length;
             const percentage = totalQuestions > 0 ? (finalScore / totalQuestions) * 100 : 0;
-
-            const newScoreId = await addScore({
-                userName: userProfile.name,
-                userId: userProfile.uid,
-                score: finalScore,
-                totalQuestions,
-                percentage,
-                setId: setId!,
-                setName: selectedSet?.name || 'ทั่วไป',
-                department: userProfile.department,
-                cheatAttempts,
-                penaltyPoints,
-                userAnswers: answers,
-                questionOrder: questions.map(q => q.id!),
-            });
-            
+            const newScoreId = await addScore({ userName: userProfile.name, userId: userProfile.uid, score: finalScore, totalQuestions, percentage, setId: setId!, setName: selectedSet?.name || 'ทั่วไป', department: userProfile.department, cheatAttempts, penaltyPoints, userAnswers: answers, questionOrder: questions.map(q => q.id!), });
             navigate(`/review/${newScoreId}`);
-
         } catch (error) {
             console.error("Error finishing quiz:", error);
             showNotification("เกิดข้อผิดพลาด", "ไม่สามารถส่งคำตอบได้", "error");
@@ -207,40 +173,56 @@ const Quiz: React.FC = () => {
             showConfirmation('ยืนยันการส่งคำตอบ', 'คุณต้องการส่งคำตอบทั้งหมดใช่หรือไม่?', () => finishQuiz());
         }
     };
+
+    // --- START: อัปเดตส่วนตรวจจับการโกง ---
     useEffect(() => {
-        const handleVisibilityChange = () => {
-            if (document.hidden && isStarted) setCheatAttempts(prev => prev + 1);
+        // ใช้ 'blur' event เพื่อตรวจจับการคลิกออกนอกหน้าต่าง
+        const handleBlur = () => {
+            if (isStarted && !isFinishingRef.current) {
+                setCheatAttempts(prev => prev + 1);
+            }
         };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+        window.addEventListener('blur', handleBlur);
+        return () => window.removeEventListener('blur', handleBlur);
     }, [isStarted]);
+    // --- END: อัปเดตส่วนตรวจจับการโกง ---
+
     useEffect(() => {
         if (!isStarted || isFinishing) return;
         if (cheatAttempts > 0 && cheatAttempts !== lastCheatAttemptHandled.current) {
             lastCheatAttemptHandled.current = cheatAttempts;
             switch (cheatAttempts) {
-                case 1: showNotification('คำเตือน! (ครั้งที่ 1)', 'ตรวจพบการสลับหน้าจอ หากทำอีกจะถูกหักคะแนน', 'error'); break;
+                case 1: showNotification('คำเตือน! (ครั้งที่ 1)', 'ตรวจพบการออกนอกหน้าต่างข้อสอบ หากทำอีกจะถูกหักคะแนน', 'error'); break;
                 case 2: setPenaltyPoints(p => p + 2); showNotification('ถูกหักคะแนน! (ครั้งที่ 2)', 'คุณถูกหัก 2 คะแนน', 'error'); break;
-                case 3: setPenaltyPoints(p => p + 3); showNotification('ถูกหักเพิ่ม 3 คะแนน', 'error'); break;
-                case 4: showNotification('ส่งคำตอบอัตโนมัติ!', 'สลับหน้าจอเกินกำหนด ระบบได้ส่งคำตอบของคุณแล้ว', 'error'); finishQuiz(true); break;
+                case 3: setPenaltyPoints(p => p + 3); showNotification('ถูกหักเพิ่ม! (ครั้งที่ 3)', 'คุณถูกหักเพิ่ม 3 คะแนน', 'error'); break;
+                case 4: showNotification('ส่งคำตอบอัตโนมัติ!', 'ออกนอกหน้าต่างเกินกำหนด ระบบได้ส่งคำตอบของคุณแล้ว', 'error'); finishQuiz(true); break;
             }
         }
     }, [cheatAttempts, isStarted, isFinishing, showNotification, finishQuiz]);
+
     useEffect(() => {
         let timer: NodeJS.Timeout;
-        if (isStarted && timeRemaining > 0) timer = setTimeout(() => setTimeRemaining(p => p - 1), 1000);
-        else if (isStarted && timeRemaining <= 0) finishQuiz(true);
+        if (isStarted && timeRemaining > 0) {
+            timer = setTimeout(() => setTimeRemaining(p => p - 1), 1000);
+        } else if (isStarted && timeRemaining <= 0) {
+            finishQuiz(true);
+        }
         return () => clearTimeout(timer);
     }, [timeRemaining, isStarted, finishQuiz]);
+
     const handleAnswer = (questionId: string, answer: any) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
+
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60);
         const remainingSeconds = seconds % 60;
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
+
     if (!isStarted) return <LoadingSpinner message="กำลังเตรียมข้อสอบ..." />;
+
     return (
         <div className="max-w-3xl mx-auto p-4">
             {isFinishing && <LoadingSpinner message="กำลังส่งคำตอบและตรวจคะแนน..." />}
