@@ -1,19 +1,31 @@
-import React, { 
-  createContext, 
-  useContext, 
-  ReactNode, 
-  useMemo 
+import React, {
+  createContext,
+  useContext,
+  ReactNode,
+  useMemo
 } from 'react';
 import { useFirebaseData } from '../hooks/useFirebaseData';
-import type { FirebaseDepartment, FirebaseQuizSet, FirebaseQuestion, FirebaseScore } from '../services/firebaseService';
+import type { FirebaseDepartment, FirebaseQuizSet, FirebaseQuestion, FirebaseScore, UserProfile } from '../services/firebaseService';
+import type { QueryDocumentSnapshot } from 'firebase/firestore';
+
+interface PaginatedData<T> {
+  data: T[];
+  lastDoc: QueryDocumentSnapshot | null;
+  hasMore: boolean;
+  loading: boolean;
+  loadingMore: boolean;
+}
 
 interface QuizContextType {
   loading: boolean;
   error: string | null;
   departments: FirebaseDepartment[];
   quizSets: FirebaseQuizSet[];
-  questions: FirebaseQuestion[];
+  questionsPaginated: PaginatedData<FirebaseQuestion>;
+  fetchMoreQuestions: () => Promise<void>;
+  fetchInitialQuestions: () => Promise<void>;
   scores: FirebaseScore[];
+  users: UserProfile[];
   addDepartment: (department: Omit<FirebaseDepartment, 'id'>) => Promise<string>;
   updateDepartment: (id: string, updates: Partial<FirebaseDepartment>) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
@@ -27,11 +39,11 @@ interface QuizContextType {
   deleteMultipleQuestions: (ids: string[]) => Promise<void>;
   updateQuestionStats: (id: string, isCorrect: boolean) => Promise<void>;
   addScore: (score: Omit<FirebaseScore, 'id' | 'timestamp'>) => Promise<string | void>;
-  deleteScore: (id: string) => Promise<void>;
+  deleteScore: (id: string) => Promise<void>; // This type definition is crucial
   getQuestionsBySetId: (setId: string) => FirebaseQuestion[];
   getScoresBySetId: (setId: string) => FirebaseScore[];
   refreshData: () => Promise<void>;
-  updateUserProfile: (uid: string, updates: Partial<{name: string, department: string, role: 'admin' | 'user'}>) => Promise<void>;
+  updateUserProfile: (uid: string, updates: Partial<UserProfile>) => Promise<void>;
   deleteUser: (uid: string) => Promise<void>;
 }
 

@@ -9,44 +9,137 @@ import {
   type FirebaseDepartment,
   type FirebaseQuizSet,
   type FirebaseQuestion,
-  type FirebaseScore
+  type FirebaseScore,
+  type UserProfile,
 } from '../services/firebaseService';
-import type { UserProfile } from '../context/AuthContext';
+import type { QueryDocumentSnapshot } from 'firebase/firestore';
+
+interface PaginatedData<T> {
+  data: T[];
+  lastDoc: QueryDocumentSnapshot | null;
+  hasMore: boolean;
+  loading: boolean;
+  loadingMore: boolean;
+}
+
+const ITEMS_PER_PAGE = 15;
 
 export const useFirebaseData = () => {
   const [departments, setDepartments] = useState<FirebaseDepartment[]>([]);
   const [quizSets, setQuizSets] = useState<FirebaseQuizSet[]>([]);
-  const [questions, setQuestions] = useState<FirebaseQuestion[]>([]);
   const [scores, setScores] = useState<FirebaseScore[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadAllData = useCallback(async () => {
+  const [questionsPaginated, setQuestionsPaginated] = useState<PaginatedData<FirebaseQuestion>>({
+    data: [],
+    lastDoc: null,
+    hasMore: true,
+    loading: true,
+    loadingMore: false,
+  });
+
+  const fetchInitialQuestions = useCallback(async () => {
+    try {
+      setQuestionsPaginated(prev => ({ ...prev, loading: true }));
+      const { data, lastVisible } = await questionsService.getPaginated('createdAt', ITEMS_PER_PAGE, null);
+      setQuestionsPaginated({
+        data: data.map(convertTimestamps),
+        lastDoc: lastVisible,
+        hasMore: data.length === ITEMS_PER_PAGE,
+        loading: false,
+        loadingMore: false,
+      });
+    } catch (err) {
+      console.error('Error fetching initial questions:', err);
+      setError('Failed to load questions');
+      setQuestionsPaginated(prev => ({ ...prev, loading: false }));
+    }
+  }, []);
+
+  const fetchMoreQuestions = useCallback(async () => {
+    if (questionsPaginated.loadingMore || !questionsPaginated.hasMore) return;
+
+    try {
+      setQuestionsPaginated(prev => ({ ...prev, loadingMore: true }));
+      const { data, lastVisible } = await questionsService.getPaginated('createdAt', ITEMS_PER_PAGE, questionsPaginated.lastDoc);
+      
+      setQuestionsPaginated(prev => ({
+        ...prev,
+        data: [...prev.data, ...data.map(convertTimestamps)],
+        lastDoc: lastVisible,
+        hasMore: data.length === ITEMS_PER_PAGE,
+        loadingMore: false,
+      }));
+    } catch (err) {
+      console.error('Error fetching more questions:', err);
+      setError('Failed to load more questions');
+      setQuestionsPaginated(prev => ({ ...prev, loadingMore: false }));
+    }
+  }, [questionsPaginated.lastDoc, questionsPaginated.hasMore, questionsPaginated.loadingMore]);
+
+  const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [departmentsData, setsData, questionsData, scoresData] = await Promise.all([
+      const [departmentsData, setsData, scoresData, usersData] = await Promise.all([
         departmentsService.getAll(),
         quizSetsService.getAll(),
-        questionsService.getAll(),
-        scoresService.getAll()
+        scoresService.getAll(),
+        usersService.getAll(),
       ]);
       setDepartments(departmentsData);
       setQuizSets(setsData.map(convertTimestamps));
-      setQuestions(questionsData.map(convertTimestamps));
       setScores(scoresData.map(convertTimestamps));
+      setUsers(usersData);
     } catch (err) {
       console.error('Error loading data:', err);
-      setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
+      setError('Failed to load initial data');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    loadAllData();
-  }, [loadAllData]);
+    loadInitialData();
+    fetchInitialQuestions();
+  }, [loadInitialData, fetchInitialQuestions]);
 
+  const addQuestion = useCallback(async (question: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>) => {
+    const id = await questionsService.add(question);
+    await fetchInitialQuestions();
+    return id;
+  }, [fetchInitialQuestions]);
+  
+  const addMultipleQuestions = useCallback(async (questions: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>[]) => {
+    await questionsService.addMultiple(questions);
+    await fetchInitialQuestions();
+  }, [fetchInitialQuestions]);
+
+  const updateQuestion = useCallback(async (id: string, updates: Partial<FirebaseQuestion>) => {
+    await questionsService.update(id, updates);
+    setQuestionsPaginated(prev => ({
+      ...prev,
+      data: prev.data.map(q => (q.id === id ? { ...q, ...updates } : q))
+    }));
+  }, []);
+
+  const deleteQuestion = useCallback(async (id: string) => {
+    await questionsService.delete(id);
+    setQuestionsPaginated(prev => ({
+      ...prev,
+      data: prev.data.filter(q => q.id !== id)
+    }));
+  }, []);
+  
+  const deleteMultipleQuestions = useCallback(async (ids: string[]) => {
+    await questionsService.deleteMultiple(ids);
+    await fetchInitialQuestions();
+  }, [fetchInitialQuestions]);
+  
+  const getQuestionsBySetId = useCallback((setId: string) => questionsPaginated.data.filter(q => q.setId === setId), [questionsPaginated.data]);
+  
   const addDepartment = useCallback(async (department: Omit<FirebaseDepartment, 'id'>) => {
     const id = await departmentsService.add(department);
     setDepartments(prev => [...prev, { ...department, id }].sort((a, b) => a.name.localeCompare(b.name)));
@@ -78,35 +171,8 @@ export const useFirebaseData = () => {
   const deleteQuizSet = useCallback(async (id: string) => {
     await quizSetsService.delete(id);
     setQuizSets(prev => prev.filter(set => set.id !== id));
-    setQuestions(prev => prev.filter(q => q.setId !== id));
-  }, []);
-
-  const addQuestion = useCallback(async (question: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>) => {
-    const id = await questionsService.add(question);
-    await loadAllData();
-    return id;
-  }, [loadAllData]);
-
-  // --- เพิ่มฟังก์ชันนี้ที่หายไป ---
-  const addMultipleQuestions = useCallback(async (questions: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>[]) => {
-    await questionsService.addMultiple(questions);
-    await loadAllData();
-  }, [loadAllData]);
-
-  const updateQuestion = useCallback(async (id: string, updates: Partial<FirebaseQuestion>) => {
-    await questionsService.update(id, updates);
-    setQuestions(prev => prev.map(q => (q.id === id ? { ...q, ...updates } : q)));
-  }, []);
-
-  const deleteQuestion = useCallback(async (id: string) => {
-    await questionsService.delete(id);
-    await loadAllData();
-  }, [loadAllData]);
-  
-  const deleteMultipleQuestions = useCallback(async (ids: string[]) => {
-    await questionsService.deleteMultiple(ids);
-    await loadAllData(); 
-  }, [loadAllData]);
+    await fetchInitialQuestions();
+  }, [fetchInitialQuestions]);
 
   const updateQuestionStats = useCallback(async (id: string, isCorrect: boolean) => {
     await questionsService.updateStats(id, isCorrect);
@@ -123,19 +189,16 @@ export const useFirebaseData = () => {
     await scoresService.delete(id);
     setScores(prev => prev.filter(score => score.id !== id));
   }, []);
-  
+
   const updateUserProfile = useCallback(async (uid: string, updates: Partial<UserProfile>) => {
     await usersService.update(uid, updates);
+    setUsers(prev => prev.map(user => (user.uid === uid ? { ...user, ...updates } : user)));
     setScores(prevScores =>
       prevScores.map(score => {
         if (score.userId === uid) {
           const newScore = { ...score };
-          if (updates.name) {
-            newScore.userName = updates.name;
-          }
-          if (updates.department) {
-            newScore.department = updates.department;
-          }
+          if (updates.name) { newScore.userName = updates.name; }
+          if (updates.department) { newScore.department = updates.department; }
           return newScore;
         }
         return score;
@@ -145,26 +208,29 @@ export const useFirebaseData = () => {
 
   const deleteUser = useCallback(async (uid: string) => {
     await usersService.delete(uid);
+    setUsers(prev => prev.filter(user => user.uid !== uid));
     setScores(prevScores => prevScores.filter(score => score.userId !== uid));
   }, []);
 
-  const getQuestionsBySetId = useCallback((setId: string) => questions.filter(q => q.setId === setId), [questions]);
   const getScoresBySetId = useCallback((setId: string) => scores.filter(s => s.setId === setId), [scores]);
 
   return {
-    departments, quizSets, questions, scores, loading, error,
+    departments, quizSets, scores, users, loading, error,
+    questionsPaginated,
+    fetchInitialQuestions,
+    fetchMoreQuestions,
     addDepartment, updateDepartment, deleteDepartment,
     addQuizSet, updateQuizSet, deleteQuizSet,
     addQuestion,
-    addMultipleQuestions, // <-- เพิ่มกลับเข้ามาใน return
+    addMultipleQuestions,
     updateQuestion,
     deleteQuestion,
     deleteMultipleQuestions,
     updateQuestionStats,
     addScore,
-    deleteScore,
+    deleteScore, // This export is crucial
     getQuestionsBySetId, getScoresBySetId,
-    refreshData: loadAllData,
+    refreshData: loadInitialData,
     updateUserProfile,
     deleteUser,
   };

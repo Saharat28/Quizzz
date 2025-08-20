@@ -1,21 +1,47 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { CheckCircle, Clock } from 'lucide-react';
+import { CheckCircle, Clock, Check, X } from 'lucide-react';
 import { useQuizContext } from '../context/QuizContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 import { FirebaseQuestion } from '../services/firebaseService';
-import { isEqual } from 'lodash';
+import { checkAnswer } from '../utils/quizUtils';
 
 const QuestionRenderer: React.FC<{
     question: FirebaseQuestion;
     index: number;
     userAnswer: any;
     onAnswer: (questionId: string, answer: any) => void;
-}> = ({ question, index, userAnswer, onAnswer }) => {
+    instantFeedback: boolean;
+}> = ({ question, index, userAnswer, onAnswer, instantFeedback }) => {
+
+    const hasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer !== '';
+    const isCorrect = hasAnswered ? checkAnswer(question, userAnswer) : false;
+
+    const getOptionStyle = (option: string) => {
+        // --- Default and Selected Styles ---
+        if (!instantFeedback || !hasAnswered) {
+             return userAnswer === option || (Array.isArray(userAnswer) && userAnswer.includes(option))
+                ? 'border-red-500 bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500/50' // Selected
+                : 'border-gray-300 hover:border-red-400 hover:bg-red-50 dark:border-gray-700 dark:hover:border-red-500/50 dark:hover:bg-red-900/20'; // Default
+        }
+
+        // --- Instant Feedback Styles ---
+        const isThisOptionCorrect = checkAnswer(question, option);
+        const isThisOptionSelected = userAnswer === option || (Array.isArray(userAnswer) && userAnswer.includes(option));
+
+        if (isThisOptionCorrect) {
+            return 'border-green-500 bg-green-100 dark:bg-green-900/30 ring-2 ring-green-500/50'; // Correct Answer
+        }
+        if (isThisOptionSelected && !isThisOptionCorrect) {
+            return 'border-red-500 bg-red-100 dark:bg-red-900/30 ring-2 ring-red-500/50'; // Incorrectly Selected
+        }
+        return 'border-gray-300 opacity-60 dark:border-gray-700'; // Not selected, not correct
+    };
 
     const handleMcqMultipleChange = (option: string) => {
+        if (instantFeedback && hasAnswered) return;
         const currentAnswers = Array.isArray(userAnswer) ? [...userAnswer] : [];
         let newAnswers;
         if (currentAnswers.includes(option)) {
@@ -26,6 +52,11 @@ const QuestionRenderer: React.FC<{
         onAnswer(question.id!, newAnswers.sort());
     };
 
+    const handleSingleAnswer = (option: string) => {
+        if (instantFeedback && hasAnswered) return;
+        onAnswer(question.id!, option);
+    }
+
     const renderQuestionBody = () => {
         switch (question.type) {
             case 'multiple_choice_single':
@@ -33,8 +64,9 @@ const QuestionRenderer: React.FC<{
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {question.options?.map((option, optIndex) => (
-                            <button key={optIndex} onClick={() => onAnswer(question.id!, option)} className={`text-left p-4 rounded-xl border-2 transition-all duration-200 ${userAnswer === option ? 'border-red-500 bg-red-900/30 ring-2 ring-red-500/50' : 'border-gray-700 hover:border-red-500/50 hover:bg-red-900/20'}`}>
-                                <span className="text-lg text-gray-200">{option}</span>
+                            <button key={optIndex} onClick={() => handleSingleAnswer(option)} disabled={instantFeedback && hasAnswered} className={`text-left p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center ${getOptionStyle(option)}`}>
+                                <span className="text-lg text-gray-800 dark:text-gray-200">{option}</span>
+                                {instantFeedback && hasAnswered && (checkAnswer(question, option) ? <Check className="text-green-600 dark:text-green-400"/> : (userAnswer === option && <X className="text-red-600 dark:text-red-400"/>))}
                             </button>
                         ))}
                     </div>
@@ -43,22 +75,28 @@ const QuestionRenderer: React.FC<{
                 return (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {question.options?.map((option, optIndex) => (
-                            <label key={optIndex} className={`flex items-center space-x-3 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer ${Array.isArray(userAnswer) && userAnswer.includes(option) ? 'border-red-500 bg-red-900/30 ring-2 ring-red-500/50' : 'border-gray-700 hover:border-red-500/50 hover:bg-red-900/20'}`}>
-                                <input type="checkbox" checked={Array.isArray(userAnswer) && userAnswer.includes(option)} onChange={() => handleMcqMultipleChange(option)} className="form-checkbox h-5 w-5 text-red-500 bg-gray-800 border-gray-600 rounded focus:ring-red-500" />
-                                <span className="text-lg text-gray-200">{option}</span>
+                            <label key={optIndex} className={`flex items-center space-x-3 p-4 rounded-xl border-2 transition-all duration-200 ${getOptionStyle(option)} ${instantFeedback && hasAnswered ? 'cursor-default' : 'cursor-pointer'}`}>
+                                <input type="checkbox" checked={Array.isArray(userAnswer) && userAnswer.includes(option)} onChange={() => handleMcqMultipleChange(option)} disabled={instantFeedback && hasAnswered} className="form-checkbox h-5 w-5 text-red-600 bg-gray-200 border-gray-300 rounded focus:ring-red-500 dark:bg-gray-800 dark:border-gray-600" />
+                                <span className="text-lg text-gray-800 dark:text-gray-200">{option}</span>
                             </label>
                         ))}
                     </div>
                 );
             case 'fill_in_blank':
                 return (
-                    <input 
-                        type="text"
-                        value={userAnswer || ''}
-                        onChange={(e) => onAnswer(question.id!, e.target.value)}
-                        className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white text-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-                        placeholder="พิมพ์คำตอบของคุณที่นี่..."
-                    />
+                    <div>
+                        <input 
+                            type="text"
+                            value={userAnswer || ''}
+                            onChange={(e) => onAnswer(question.id!, e.target.value)}
+                            readOnly={instantFeedback && hasAnswered}
+                            className={`w-full px-4 py-3 bg-white dark:bg-gray-800 border-2 rounded-xl text-gray-900 dark:text-white text-lg focus:ring-2 focus:ring-red-500 transition-colors ${instantFeedback && hasAnswered ? (isCorrect ? 'border-green-500' : 'border-red-500') : 'border-gray-300 dark:border-gray-700'}`}
+                            placeholder="พิมพ์คำตอบของคุณที่นี่..."
+                        />
+                         {instantFeedback && hasAnswered && !isCorrect && (
+                            <div className="mt-2 text-left text-green-600 dark:text-green-400">คำตอบที่ถูกต้องคือ: {Array.isArray(question.correctAnswer) ? question.correctAnswer.join(', ') : question.correctAnswer}</div>
+                         )}
+                    </div>
                 );
             default:
                 return <p className="text-yellow-400">ไม่รู้จักประเภทของคำถามนี้</p>;
@@ -66,8 +104,8 @@ const QuestionRenderer: React.FC<{
     };
 
     return (
-        <div id={`question-card-${question.id}`} className="bg-gray-900/50 border border-gray-800 rounded-2xl shadow-lg p-6 md:p-8 scroll-mt-24">
-            <h3 className="text-xl md:text-2xl font-semibold text-white leading-relaxed mb-4"><span className="text-gray-500 mr-2">{index + 1}.</span>{question.text}</h3>
+        <div id={`question-card-${question.id}`} className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-8 scroll-mt-24 dark:bg-gray-900/50 dark:border-gray-800">
+            <h3 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white leading-relaxed mb-4"><span className="text-gray-400 dark:text-gray-500 mr-2">{index + 1}.</span>{question.text}</h3>
             {question.imageUrl && (
                 <div className="mb-6">
                     <img src={question.imageUrl} alt="Question illustration" className="max-w-full max-h-80 mx-auto rounded-lg" />
@@ -98,6 +136,7 @@ const Quiz: React.FC = () => {
 
     const selectedSet = useMemo(() => setId ? quizSets.find(set => set.id === setId) : null, [quizSets, setId]);
     const availableQuestions = useMemo(() => setId ? getQuestionsBySetId(setId) : [], [getQuestionsBySetId, setId]);
+    const instantFeedbackEnabled = selectedSet?.instantFeedback || false;
 
     useEffect(() => {
         if (availableQuestions.length > 0 && selectedSet && !isStarted) {
@@ -108,21 +147,6 @@ const Quiz: React.FC = () => {
             setIsStarted(true);
         }
     }, [availableQuestions, selectedSet, isStarted]);
-
-    const checkAnswer = (question: FirebaseQuestion, userAnswer: any): boolean => {
-        if (userAnswer === undefined || userAnswer === null) return false;
-        switch (question.type) {
-            case 'multiple_choice_single':
-            case 'true_false':
-                return userAnswer === question.correctAnswer;
-            case 'fill_in_blank':
-                return typeof userAnswer === 'string' && userAnswer.trim() === question.correctAnswer;
-            case 'multiple_choice_multiple':
-                return Array.isArray(userAnswer) && Array.isArray(question.correctAnswer) && isEqual([...userAnswer].sort(), [...question.correctAnswer].sort());
-            default:
-                return false;
-        }
-    };
 
     const finishQuiz = useCallback(async (forced = false) => {
         if (isFinishingRef.current) return;
@@ -174,9 +198,9 @@ const Quiz: React.FC = () => {
 
     const handleSubmitAttempt = () => {
         if (!isStarted || isFinishing) return;
-        const unansweredCount = questions.length - Object.keys(answers).length;
+        const unansweredCount = questions.length - Object.keys(answers).filter(key => answers[key] !== undefined && answers[key] !== null && answers[key] !== '').length;
         if (unansweredCount > 0) {
-            const firstUnanswered = questions.find(q => answers[q.id!] === undefined);
+            const firstUnanswered = questions.find(q => answers[q.id!] === undefined || answers[q.id!] === null || answers[q.id!] === '');
             showConfirmation('ยังทำข้อสอบไม่ครบ', `คุณยังไม่ได้ตอบ ${unansweredCount} ข้อ ต้องการส่งคำตอบเลยหรือไม่?`, () => finishQuiz());
             if (firstUnanswered) document.getElementById(`question-card-${firstUnanswered.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
@@ -197,7 +221,7 @@ const Quiz: React.FC = () => {
             switch (cheatAttempts) {
                 case 1: showNotification('คำเตือน! (ครั้งที่ 1)', 'ตรวจพบการสลับหน้าจอ หากทำอีกจะถูกหักคะแนน', 'error'); break;
                 case 2: setPenaltyPoints(p => p + 2); showNotification('ถูกหักคะแนน! (ครั้งที่ 2)', 'คุณถูกหัก 2 คะแนน', 'error'); break;
-                case 3: setPenaltyPoints(p => p + 3); showNotification('ถูกหักคะแนน! (ครั้งที่ 3)', 'คุณถูกหักเพิ่ม 3 คะแนน', 'error'); break;
+                case 3: setPenaltyPoints(p => p + 3); showNotification('ถูกหักเพิ่ม 3 คะแนน', 'error'); break;
                 case 4: showNotification('ส่งคำตอบอัตโนมัติ!', 'สลับหน้าจอเกินกำหนด ระบบได้ส่งคำตอบของคุณแล้ว', 'error'); finishQuiz(true); break;
             }
         }
@@ -205,7 +229,7 @@ const Quiz: React.FC = () => {
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (isStarted && timeRemaining > 0) timer = setTimeout(() => setTimeRemaining(p => p - 1), 1000);
-        else if (isStarted && timeRemaining === 0) finishQuiz();
+        else if (isStarted && timeRemaining <= 0) finishQuiz(true);
         return () => clearTimeout(timer);
     }, [timeRemaining, isStarted, finishQuiz]);
     const handleAnswer = (questionId: string, answer: any) => {
@@ -220,25 +244,25 @@ const Quiz: React.FC = () => {
     return (
         <div className="max-w-3xl mx-auto p-4">
             {isFinishing && <LoadingSpinner message="กำลังส่งคำตอบและตรวจคะแนน..." />}
-            <div className="sticky top-4 z-10 bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-2xl shadow-lg p-4 mb-8">
+            <div className="sticky top-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg p-4 mb-8">
                 <div className="flex items-center justify-between">
                     <div className="text-left">
-                        <h2 className="font-bold text-lg text-white">{selectedSet?.name}</h2>
-                        <p className="text-sm text-gray-400">{userProfile?.name}</p>
+                        <h2 className="font-bold text-lg text-gray-900 dark:text-white">{selectedSet?.name}</h2>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{userProfile?.name}</p>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2 text-gray-300"><Clock className="w-5 h-5" /><span className={`font-semibold text-lg ${timeRemaining < 300 && isStarted ? 'text-red-500 animate-pulse' : 'text-white'}`}>{formatTime(timeRemaining)}</span></div>
+                        <div className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><Clock className="w-5 h-5" /><span className={`font-semibold text-lg ${timeRemaining < 300 && isStarted ? 'text-red-500 animate-pulse' : 'text-gray-900 dark:text-white'}`}>{formatTime(timeRemaining)}</span></div>
                         <button onClick={handleSubmitAttempt} disabled={isFinishing} className="px-5 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"><CheckCircle className="w-5 h-5" /><span>ส่งคำตอบ</span></button>
                     </div>
                 </div>
             </div>
             <div className="space-y-10">
                 {questions.map((question, index) => (
-                    <QuestionRenderer key={question.id} question={question} index={index} userAnswer={answers[question.id!]} onAnswer={handleAnswer} />
+                    <QuestionRenderer key={question.id} question={question} index={index} userAnswer={answers[question.id!]} onAnswer={handleAnswer} instantFeedback={instantFeedbackEnabled} />
                 ))}
             </div>
             <div className="mt-12 text-center">
-                <p className="text-gray-500 mb-4">ทำครบทุกข้อแล้วใช่ไหม?</p>
+                <p className="text-gray-500 dark:text-gray-500 mb-4">ทำครบทุกข้อแล้วใช่ไหม?</p>
                 <button onClick={handleSubmitAttempt} disabled={isFinishing} className="px-10 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 flex items-center space-x-2 mx-auto text-lg disabled:opacity-50 disabled:cursor-not-allowed"><CheckCircle className="w-6 h-6" /><span>ส่งคำตอบทั้งหมด</span></button>
             </div>
         </div>

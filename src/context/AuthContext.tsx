@@ -7,14 +7,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import LoadingSpinner from '../components/LoadingSpinner';
-
-export interface UserProfile {
-  uid: string;
-  name: string;
-  department: string;
-  email: string;
-  role: 'admin' | 'user';
-}
+import type { UserProfile } from '../services/firebaseService'; // <-- UPDATED IMPORT
 
 interface AuthContextType {
   currentUser: User | null;
@@ -45,7 +38,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userDocRef = doc(db, 'users', user.uid);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
-          setUserProfile(userDocSnap.data() as UserProfile);
+          // Add uid to the profile object from the doc id
+          setUserProfile({ ...userDocSnap.data(), uid: user.uid } as UserProfile);
         } else {
           console.error(`No profile found for UID: ${user.uid}. Logging out.`);
           await signOut(auth);

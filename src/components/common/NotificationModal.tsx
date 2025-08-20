@@ -16,9 +16,9 @@ const icons = {
 };
 
 const bgColors = {
-  success: 'bg-green-100',
-  error: 'bg-red-100',
-  info: 'bg-blue-100',
+  success: 'bg-green-100 dark:bg-green-900/30',
+  error: 'bg-red-100 dark:bg-red-900/30',
+  info: 'bg-blue-100 dark:bg-blue-900/30',
 };
 
 const buttonColors = {
@@ -38,22 +38,22 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, title, me
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 transition-opacity duration-300"
+      className="fixed inset-0 bg-black bg-opacity-60 dark:bg-opacity-70 z-50 flex items-center justify-center p-4 transition-opacity duration-300"
       onClick={onClose}
       onKeyDown={handleKeyDown}
       tabIndex={-1}
       autoFocus
     >
       <div
-        className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all duration-300 scale-100"
+        className="relative bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center transform transition-all duration-300 scale-100 dark:bg-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`mx-auto flex items-center justify-center h-16 w-16 rounded-full ${bgColors[type]} mb-5`}>
           {icons[type]}
         </div>
-        <h3 className="text-xl font-bold text-gray-900">{title}</h3>
+        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
         <div className="mt-2 px-4 text-sm">
-          <p className="text-gray-600 whitespace-pre-wrap">{message}</p>
+          <p className="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{message}</p>
         </div>
         <div className="mt-6">
           <button
@@ -61,10 +61,10 @@ const NotificationModal: React.FC<NotificationModalProps> = ({ isOpen, title, me
             onClick={onClose}
             className={`w-full inline-flex justify-center rounded-xl border border-transparent shadow-sm px-4 py-3 text-base font-medium text-white ${buttonColors[type]} focus:outline-none focus:ring-2 focus:ring-offset-2`}
           >
-            ตกลง
+            OK
           </button>
         </div>
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
             <X className="w-6 h-6" />
         </button>
       </div>

@@ -37,19 +37,19 @@ const ForgotPasswordModal: React.FC<{
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-xl w-full max-w-md p-8">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 dark:bg-gray-900 dark:border dark:border-gray-700">
                 <div className="flex items-center space-x-3 mb-6">
-                    <Mail className="w-8 h-8 text-red-400" />
-                    <h2 className="text-2xl font-bold text-white">ลืมรหัสผ่าน</h2>
+                    <Mail className="w-8 h-8 text-red-500 dark:text-red-400" />
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">ลืมรหัสผ่าน</h2>
                 </div>
-                <p className="text-gray-400 mb-6">กรอกอีเมลที่ใช้สมัครสมาชิก ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปให้</p>
+                <p className="text-gray-600 dark:text-gray-400 mb-6">กรอกอีเมลที่ใช้สมัครสมาชิก ระบบจะส่งลิงก์สำหรับตั้งรหัสผ่านใหม่ไปให้</p>
                 <form onSubmit={handlePasswordReset}>
                     <div className="space-y-4">
                         <input
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-800 border border-gray-600 text-white rounded-xl text-lg"
+                            className="w-full px-4 py-3 bg-gray-100 border border-gray-300 text-gray-900 rounded-xl text-lg dark:bg-gray-800 dark:border-gray-600 dark:text-white"
                             placeholder="กรอกอีเมลของคุณ"
                             autoFocus
                             required
@@ -57,7 +57,7 @@ const ForgotPasswordModal: React.FC<{
                         <button type="submit" disabled={isLoading} className="w-full px-6 py-3 bg-[#d93327] text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50">
                             {isLoading ? 'กำลังส่ง...' : 'ส่งอีเมลรีเซ็ตรหัสผ่าน'}
                         </button>
-                        <button type="button" onClick={onClose} className="w-full px-6 py-3 bg-gray-700 text-gray-300 rounded-xl font-semibold hover:bg-gray-600 transition-colors">
+                        <button type="button" onClick={onClose} className="w-full px-6 py-3 bg-gray-200 text-gray-800 rounded-xl font-semibold hover:bg-gray-300 transition-colors dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600">
                             ยกเลิก
                         </button>
                     </div>
@@ -131,23 +131,23 @@ const AuthPage: React.FC = () => {
     }
   };
 
-  const formInputStyle = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-red-500";
-  const formLabelStyle = "block text-lg font-semibold text-gray-300 mb-2";
+  const formInputStyle = "w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white";
+  const formLabelStyle = "block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2";
 
   return (
-    <div className="min-h-screen bg-[#010b13] text-gray-300 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-50 text-gray-800 flex flex-col items-center justify-center p-4 dark:bg-[#010b13] dark:text-gray-300">
       <ForgotPasswordModal isOpen={showForgotPassword} onClose={() => setShowForgotPassword(false)} />
 
       <header className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-20 h-20 bg-[#d93327] rounded-2xl mb-6 shadow-lg shadow-red-900/20"><BookOpen className="w-10 h-10 text-white" /></div>
+        <div className="inline-flex items-center justify-center w-20 h-20 bg-[#d93327] rounded-2xl mb-6 shadow-lg shadow-red-500/20 dark:shadow-red-900/20"><BookOpen className="w-10 h-10 text-white" /></div>
         <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#d93327] to-red-500 bg-clip-text text-transparent mb-2">คลังข้อสอบออนไลน์ MASARU</h1>
-        <p className="text-lg text-gray-400">พัฒนาทักษะและความรู้ของคุณได้ทุกที่ ทุกเวลา</p>
+        <p className="text-lg text-gray-600 dark:text-gray-400">พัฒนาทักษะและความรู้ของคุณได้ทุกที่ ทุกเวลา</p>
       </header>
 
-      <div className="w-full max-w-md bg-gray-900/50 border border-gray-800 rounded-2xl shadow-lg p-8">
-        <div className="flex border-b border-gray-700 mb-6">
-          <button onClick={() => setIsLoginView(true)} className={`flex-1 pb-3 font-semibold text-lg ${isLoginView ? 'text-[#d93327] border-b-2 border-[#d93327]' : 'text-gray-500'}`}>เข้าสู่ระบบ</button>
-          <button onClick={() => setIsLoginView(false)} className={`flex-1 pb-3 font-semibold text-lg ${!isLoginView ? 'text-[#d93327] border-b-2 border-[#d93327]' : 'text-gray-500'}`}>สมัครสมาชิก</button>
+      <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl shadow-xl p-8 dark:bg-gray-900/50 dark:border-gray-800">
+        <div className="flex border-b border-gray-200 dark:border-gray-700 mb-6">
+          <button onClick={() => setIsLoginView(true)} className={`flex-1 pb-3 font-semibold text-lg transition-colors ${isLoginView ? 'text-[#d93327] border-b-2 border-[#d93327]' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'}`}>เข้าสู่ระบบ</button>
+          <button onClick={() => setIsLoginView(false)} className={`flex-1 pb-3 font-semibold text-lg transition-colors ${!isLoginView ? 'text-[#d93327] border-b-2 border-[#d93327]' : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300'}`}>สมัครสมาชิก</button>
         </div>
 
         {isLoginView ? (
@@ -161,7 +161,7 @@ const AuthPage: React.FC = () => {
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} className={formInputStyle} required />
             </div>
             <div className="text-right">
-                <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm text-red-400 hover:text-red-300 hover:underline">
+                <button type="button" onClick={() => setShowForgotPassword(true)} className="text-sm text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:underline">
                     ลืมรหัสผ่าน?
                 </button>
             </div>

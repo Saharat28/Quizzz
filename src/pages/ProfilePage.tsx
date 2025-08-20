@@ -1,41 +1,15 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, User, Mail, Building2, BarChart3, Clock, HelpCircle, ShieldAlert, Edit, Trash2, Loader2, ChevronsRight } from 'lucide-react';
-import { useAuth, UserProfile } from '../context/AuthContext';
+import { ArrowLeft, User, Mail, Building2, BarChart3, Clock, HelpCircle, ShieldAlert, Edit, Trash2, Loader2, ChevronsRight, UserCog } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useQuizContext } from '../context/QuizContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useNotification } from '../context/NotificationContext';
-import type { FirebaseScore } from '../services/firebaseService';
-
-const EditProfileModal: React.FC<{ user: UserProfile; onClose: () => void; onSave: (uid: string, updates: Partial<UserProfile>) => Promise<void>; }> = ({ user, onClose, onSave }) => {
-    const { departments } = useQuizContext();
-    const [name, setName] = useState(user.name);
-    const [department, setDepartment] = useState(user.department);
-    const [role, setRole] = useState(user.role);
-    const [isSaving, setIsSaving] = useState(false);
-    const handleSave = async () => { setIsSaving(true); await onSave(user.uid, { name, department, role }); setIsSaving(false); onClose(); };
-    const formInputStyle = "w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl text-white focus:ring-2 focus:ring-red-500 focus:border-red-500";
-    const formLabelStyle = "block text-lg font-semibold text-gray-300 mb-2";
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
-            <div className="bg-gray-900 border border-gray-700 rounded-2xl shadow-xl w-full max-w-lg p-8">
-                <h2 className="text-2xl font-bold text-white mb-6">แก้ไขโปรไฟล์ - {user.name}</h2>
-                <div className="space-y-4">
-                    <div><label className={formLabelStyle}>ชื่อ - นามสกุล</label><input type="text" value={name} onChange={e => setName(e.target.value)} className={formInputStyle} /></div>
-                    <div><label className={formLabelStyle}>แผนก</label><select value={department} onChange={e => setDepartment(e.target.value)} className={formInputStyle}>{departments.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}</select></div>
-                    <div><label className={formLabelStyle}>สิทธิ์การใช้งาน (Role)</label><select value={role} onChange={e => setRole(e.target.value as 'admin' | 'user')} className={formInputStyle}><option value="user">User</option><option value="admin">Admin</option></select></div>
-                </div>
-                <div className="flex space-x-4 mt-8">
-                    <button onClick={onClose} className="flex-1 px-6 py-3 bg-gray-700 text-gray-300 rounded-xl font-semibold hover:bg-gray-600 transition-colors">ยกเลิก</button>
-                    <button onClick={handleSave} disabled={isSaving} className="flex-1 px-6 py-3 bg-[#d93327] text-white rounded-xl font-semibold hover:bg-red-700 disabled:opacity-50 transition-colors">{isSaving ? 'กำลังบันทึก...' : 'บันทึก'}</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
+import type { FirebaseScore, UserProfile } from '../services/firebaseService';
+import EditProfileModal from '../components/common/EditProfileModal';
+import EditNameModal from '../components/common/EditNameModal';
 
 const ProfilePage: React.FC = () => {
   const navigate = useNavigate();
@@ -46,7 +20,8 @@ const ProfilePage: React.FC = () => {
 
   const [viewedUserProfile, setViewedUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAdminEditModalOpen, setIsAdminEditModalOpen] = useState(false);
+  const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
   const [deletingScoreId, setDeletingScoreId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -54,13 +29,13 @@ const ProfilePage: React.FC = () => {
       setLoading(true);
       const targetId = userId || loggedInUserProfile?.uid;
       if (!targetId) { setLoading(false); return; }
-      if (targetId === loggedInUserProfile?.uid) {
+      if (targetId === loggedInUserProfile?.uid && loggedInUserProfile) {
         setViewedUserProfile(loggedInUserProfile);
       } else {
         const userDocRef = doc(db, 'users', targetId);
         const userDocSnap = await getDoc(userDocRef);
         if (userDocSnap.exists()) {
-          setViewedUserProfile(userDocSnap.data() as UserProfile);
+          setViewedUserProfile({ ...userDocSnap.data(), uid: userDocSnap.id } as UserProfile);
         } else {
           setViewedUserProfile(null);
         }
@@ -79,37 +54,37 @@ const ProfilePage: React.FC = () => {
     try {
         await updateUserProfile(uid, updates);
         setViewedUserProfile(prev => prev ? { ...prev, ...updates } : null);
-        showNotification('สำเร็จ', 'อัปเดตข้อมูลโปรไฟล์เรียบร้อยแล้ว', 'success');
-    } catch (error) { showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลได้', 'error'); }
+        showNotification('Success', 'Profile information updated successfully.', 'success');
+    } catch (error) { showNotification('Error', 'Could not update profile information.', 'error'); }
   };
 
   const handleDeleteUser = () => {
     if (!viewedUserProfile) return;
-    showConfirmation('ยืนยันการลบผู้ใช้', `ต้องการลบบัญชีของ "${viewedUserProfile.name}" และประวัติการสอบทั้งหมดใช่หรือไม่?`, async () => {
+    showConfirmation('Confirm User Deletion', `Are you sure you want to delete the account for "${viewedUserProfile.name}" and all their test history?`, async () => {
         try {
             await deleteUser(viewedUserProfile.uid);
-            showNotification('สำเร็จ', `ลบบัญชีของ ${viewedUserProfile.name} เรียบร้อยแล้ว`, 'success');
+            showNotification('Success', `Account for ${viewedUserProfile.name} has been deleted.`, 'success');
             navigate('/scores');
-        } catch (error) { showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถลบบัญชีได้', 'error'); }
+        } catch (error) { showNotification('Error', 'Could not delete the account.', 'error'); }
     });
   };
 
   const handleDeleteScore = (score: FirebaseScore) => {
-    showConfirmation('ยืนยันการลบ', `ต้องการลบประวัติการสอบ "${score.setName}" ใช่หรือไม่?`, async () => {
+    showConfirmation('Confirm Deletion', `Are you sure you want to delete the test record for "${score.setName}"?`, async () => {
         setDeletingScoreId(score.id!);
         try {
             await deleteScore(score.id!);
-            showNotification('สำเร็จ', 'ลบประวัติการสอบเรียบร้อยแล้ว', 'success');
-        } catch (error) { showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถลบข้อมูลได้', 'error'); } 
+            showNotification('Success', 'Test record deleted successfully.', 'success');
+        } catch (error) { showNotification('Error', 'Could not delete the record.', 'error'); } 
         finally { setDeletingScoreId(null); }
     });
   };
 
-  if (loading) return <LoadingSpinner message="กำลังโหลดข้อมูลโปรไฟล์..." />;
+  if (loading) return <LoadingSpinner message="Loading profile..." />;
   if (!viewedUserProfile) return (
     <div className="max-w-5xl mx-auto text-center p-8">
-        <h1 className="text-2xl font-bold text-white">ไม่พบข้อมูลผู้ใช้</h1>
-        <button onClick={() => navigate(-1)} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">ย้อนกลับ</button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Not Found</h1>
+        <button onClick={() => navigate(-1)} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">Go Back</button>
     </div>
   );
 
@@ -118,56 +93,85 @@ const ProfilePage: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto">
-      {isEditModalOpen && viewedUserProfile && <EditProfileModal user={viewedUserProfile} onClose={() => setIsEditModalOpen(false)} onSave={handleSaveProfile} />}
+      {isAdminEditModalOpen && viewedUserProfile && <EditProfileModal user={viewedUserProfile} onClose={() => setIsAdminEditModalOpen(false)} onSave={handleSaveProfile} />}
+      {isEditNameModalOpen && viewedUserProfile && <EditNameModal user={viewedUserProfile} onClose={() => setIsEditNameModalOpen(false)} onSave={handleSaveProfile} />}
+      
       <div className="flex items-center justify-between mb-8">
-        <button onClick={() => navigate(-1)} className="flex items-center space-x-2 text-gray-400 hover:text-white"><ArrowLeft className="w-5 h-5" /><span>ย้อนกลับ</span></button>
-        <h1 className="text-3xl font-bold text-white">{isOwnProfile ? 'โปรไฟล์ของคุณ' : `โปรไฟล์ของ ${viewedUserProfile.name}`}</h1>
+        <button onClick={() => navigate(-1)} className="flex items-center space-x-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+            <ArrowLeft className="w-5 h-5" />
+            <span>Go Back</span>
+        </button>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{isOwnProfile ? 'Your Profile' : `Profile of ${viewedUserProfile.name}`}</h1>
         <div className="w-36"></div>
       </div>
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl shadow-lg p-8 mb-8">
+
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 mb-8 dark:bg-gray-900/50 dark:border-gray-800">
         <div className="flex justify-between items-start">
             <div className="flex items-center space-x-6">
-                <div className="bg-red-900/30 p-4 rounded-full"><User className="w-10 h-10 text-red-400" /></div>
+                <div className="bg-red-100 p-4 rounded-full dark:bg-red-900/30">
+                    <User className="w-10 h-10 text-red-600 dark:text-red-400" />
+                </div>
                 <div>
-                    <h2 className="text-3xl font-bold text-white">{viewedUserProfile.name}</h2>
-                    <div className="flex items-center space-x-4 mt-2 text-gray-400">
+                    <div className="flex items-center gap-3">
+                        <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{viewedUserProfile.name}</h2>
+                        {isOwnProfile && (
+                            <button onClick={() => setIsEditNameModalOpen(true)} className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-200 rounded-lg dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50" title="Edit Name">
+                                <Edit className="w-5 h-5" />
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2 text-gray-500 dark:text-gray-400">
                         <div className="flex items-center space-x-2"><Mail className="w-4 h-4" /><span>{viewedUserProfile.email}</span></div>
                         <div className="flex items-center space-x-2"><Building2 className="w-4 h-4" /><span>{viewedUserProfile.department}</span></div>
+                        {viewedUserProfile.role === 'admin' && <div className="flex items-center space-x-2 text-yellow-600 dark:text-yellow-400"><UserCog className="w-4 h-4" /><span>Admin</span></div>}
                     </div>
                 </div>
             </div>
-            {isAdmin && !isOwnProfile && (
+            {isAdmin && (
                 <div className="flex space-x-2">
-                    <button onClick={() => setIsEditModalOpen(true)} className="p-2 text-blue-400 hover:bg-blue-900/50 rounded-lg" title="แก้ไขโปรไฟล์"><Edit className="w-5 h-5" /></button>
-                    <button onClick={handleDeleteUser} className="p-2 text-red-500 hover:bg-red-900/50 rounded-lg" title="ลบบัญชีผู้ใช้"><Trash2 className="w-5 h-5" /></button>
+                    <button onClick={() => setIsAdminEditModalOpen(true)} className="p-2 text-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-lg" title="Edit Profile (Admin)">
+                        <Edit className="w-5 h-5" />
+                    </button>
+                    {!isOwnProfile && <button onClick={handleDeleteUser} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg" title="Delete User Account"><Trash2 className="w-5 h-5" /></button>}
                 </div>
             )}
         </div>
       </div>
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl shadow-lg">
-        <div className="p-6 border-b border-gray-800"><h2 className="text-2xl font-bold text-white flex items-center space-x-3"><BarChart3 className="w-6 h-6 text-red-400" /><span>ประวัติการทำข้อสอบ</span></h2></div>
-        <div className="divide-y divide-gray-800">
+
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-sm dark:bg-gray-900/50 dark:border-gray-800">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-800">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center space-x-3">
+                <BarChart3 className="w-6 h-6 text-red-500 dark:text-red-400" />
+                <span>Test History</span>
+            </h2>
+        </div>
+        <div className="divide-y divide-gray-200 dark:divide-gray-800">
           {userScores.length > 0 ? (
             userScores.map(score => (
-              <Link to={`/review/${score.id}`} key={score.id} className="p-6 flex justify-between items-center hover:bg-gray-800/50 transition-colors flex-wrap gap-4 group">
+              <Link to={`/review/${score.id}`} key={score.id} className="p-6 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors flex-wrap gap-4 group">
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-white group-hover:text-red-400 transition-colors">{score.setName}</h3>
-                  <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1"><Clock className="w-4 h-4" /><span>ทำเมื่อ: {score.timestamp instanceof Date ? score.timestamp.toLocaleDateString('th-TH') : 'N/A'}</span></div>
-                    {(score.cheatAttempts ?? 0) > 0 && (<div className="flex items-center space-x-1 text-yellow-400"><ShieldAlert className="w-4 h-4" /><span>สลับหน้าจอ: {score.cheatAttempts} ครั้ง (ถูกหัก {score.penaltyPoints} คะแนน)</span></div>)}
+                  <h3 className="text-xl font-semibold text-gray-800 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{score.setName}</h3>
+                  <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500 dark:text-gray-500">
+                    <div className="flex items-center space-x-1"><Clock className="w-4 h-4" /><span>Taken on: {score.timestamp instanceof Date ? score.timestamp.toLocaleDateString('en-CA') : 'N/A'}</span></div>
+                    {(score.cheatAttempts ?? 0) > 0 && (<div className="flex items-center space-x-1 text-yellow-600 dark:text-yellow-400"><ShieldAlert className="w-4 h-4" /><span>Tab switches: {score.cheatAttempts} (Penalty: {score.penaltyPoints} pts)</span></div>)}
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <p className="text-xl font-bold text-white">{score.score}/{score.totalQuestions} คะแนน</p>
-                      <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full ${typeof score.percentage === 'number' && score.percentage >= 80 ? 'bg-green-900/50 text-green-300' : typeof score.percentage === 'number' && score.percentage >= 60 ? 'bg-yellow-900/50 text-yellow-300' : 'bg-red-900/50 text-red-300'}`}>{typeof score.percentage === 'number' ? `${score.percentage.toFixed(1)}%` : 'N/A'}</span>
+                      <p className="text-xl font-bold text-gray-900 dark:text-white">{score.score}/{score.totalQuestions} pts</p>
+                      <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full 
+                            ${typeof score.percentage === 'number' && score.percentage >= 80 ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 
+                             typeof score.percentage === 'number' && score.percentage >= 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' : 
+                             'bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300'}`}>
+                          {typeof score.percentage === 'number' ? `${score.percentage.toFixed(1)}%` : 'N/A'}
+                      </span>
                     </div>
                     {isAdmin ? (
-                        <button onClick={(e) => { e.preventDefault(); handleDeleteScore(score); }} disabled={deletingScoreId === score.id} className="p-2 text-red-500 hover:bg-red-900/50 rounded-lg" title="ลบประวัติการสอบนี้">
+                        <button onClick={(e) => { e.preventDefault(); handleDeleteScore(score); }} disabled={deletingScoreId === score.id} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg" title="Delete this record">
                             {deletingScoreId === score.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                         </button>
                     ) : (
-                        <ChevronsRight className="w-6 h-6 text-gray-600 group-hover:text-red-400 transition-colors" />
+                        <ChevronsRight className="w-6 h-6 text-gray-400 dark:text-gray-600 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
                     )}
                 </div>
               </Link>
@@ -175,8 +179,8 @@ const ProfilePage: React.FC = () => {
           ) : (
             <div className="p-12 text-center text-gray-500">
               <HelpCircle className="w-12 h-12 mx-auto mb-4" />
-              <p className="text-lg">ยังไม่มีประวัติการทำข้อสอบ</p>
-              {isOwnProfile && (<button onClick={() => navigate('/quiz-selection')} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">เริ่มทำข้อสอบเลย!</button>)}
+              <p className="text-lg">No test history available.</p>
+              {isOwnProfile && (<button onClick={() => navigate('/quiz-selection')} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">Start a Quiz!</button>)}
             </div>
           )}
         </div>
