@@ -103,6 +103,14 @@ export const quizSetsService = {
 
 export const questionsService = {
   ...createService<FirebaseQuestion>('questions'),
+
+  // --- เพิ่มฟังก์ชันใหม่ที่นี่ ---
+  async getAllBySetId(setId: string): Promise<FirebaseQuestion[]> {
+    const q = query(collection(db, 'questions'), where('setId', '==', setId));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as FirebaseQuestion));
+  },
+
   async add(data: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>): Promise<string> {
     const batch = writeBatch(db);
     const questionRef = doc(collection(db, 'questions'));

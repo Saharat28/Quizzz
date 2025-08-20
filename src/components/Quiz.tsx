@@ -5,7 +5,7 @@ import { useQuizContext } from '../context/QuizContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
-import { FirebaseQuestion } from '../services/firebaseService';
+import { FirebaseQuestion, questionsService } from '../services/firebaseService';
 import { checkAnswer } from '../utils/quizUtils';
 
 const QuestionRenderer: React.FC<{
@@ -104,13 +104,15 @@ const QuestionRenderer: React.FC<{
     );
 };
 
+
 const Quiz: React.FC = () => {
     const navigate = useNavigate();
     const { setId } = useParams<{ setId: string }>();
-    const { quizSets, addScore, getQuestionsBySetId } = useQuizContext();
+    const { quizSets, addScore } = useQuizContext();
     const { showNotification, showConfirmation } = useNotification();
     const { currentUser, userProfile } = useAuth();
 
+    const [isLoadingQuestions, setIsLoadingQuestions] = useState(true);
     const [isStarted, setIsStarted] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState(0);
     const [questions, setQuestions] = useState<FirebaseQuestion[]>([]);
@@ -122,18 +124,35 @@ const Quiz: React.FC = () => {
     const lastCheatAttemptHandled = useRef(0);
 
     const selectedSet = useMemo(() => setId ? quizSets.find(set => set.id === setId) : null, [quizSets, setId]);
-    const availableQuestions = useMemo(() => setId ? getQuestionsBySetId(setId) : [], [getQuestionsBySetId, setId]);
     const instantFeedbackEnabled = selectedSet?.instantFeedback || false;
 
     useEffect(() => {
-        if (availableQuestions.length > 0 && selectedSet && !isStarted) {
-            const shuffledQuestions = [...availableQuestions].sort(() => Math.random() - 0.5);
-            setQuestions(shuffledQuestions);
-            const timeInMinutes = selectedSet.timeLimit || shuffledQuestions.length;
+        const fetchQuestionsForQuiz = async () => {
+            if (setId) {
+                setIsLoadingQuestions(true);
+                try {
+                    const fetchedQuestions = await questionsService.getAllBySetId(setId);
+                    const shuffledQuestions = [...fetchedQuestions].sort(() => Math.random() - 0.5);
+                    setQuestions(shuffledQuestions);
+                } catch (error) {
+                    console.error("Failed to fetch questions for quiz:", error);
+                    showNotification("เกิดข้อผิดพลาด", "ไม่สามารถโหลดคำถามสำหรับชุดข้อสอบนี้ได้", "error");
+                } finally {
+                    setIsLoadingQuestions(false);
+                }
+            }
+        };
+
+        fetchQuestionsForQuiz();
+    }, [setId, showNotification]);
+
+    useEffect(() => {
+        if (!isLoadingQuestions && questions.length > 0 && selectedSet && !isStarted) {
+            const timeInMinutes = selectedSet.timeLimit || questions.length;
             setTimeRemaining(timeInMinutes * 60);
             setIsStarted(true);
         }
-    }, [availableQuestions, selectedSet, isStarted]);
+    }, [isLoadingQuestions, questions, selectedSet, isStarted]);
 
     const finishQuiz = useCallback(async (forced = false) => {
         if (isFinishingRef.current) return;
@@ -145,7 +164,6 @@ const Quiz: React.FC = () => {
         }
         setIsFinishing(true);
         setIsStarted(false);
-
         try {
             let rawScore = 0;
             questions.forEach(q => { if (checkAnswer(q, answers[q.id!])) { rawScore++; } });
@@ -174,19 +192,15 @@ const Quiz: React.FC = () => {
         }
     };
 
-    // --- START: อัปเดตส่วนตรวจจับการโกง ---
     useEffect(() => {
-        // ใช้ 'blur' event เพื่อตรวจจับการคลิกออกนอกหน้าต่าง
         const handleBlur = () => {
             if (isStarted && !isFinishingRef.current) {
                 setCheatAttempts(prev => prev + 1);
             }
         };
-
         window.addEventListener('blur', handleBlur);
         return () => window.removeEventListener('blur', handleBlur);
     }, [isStarted]);
-    // --- END: อัปเดตส่วนตรวจจับการโกง ---
 
     useEffect(() => {
         if (!isStarted || isFinishing) return;
@@ -221,7 +235,7 @@ const Quiz: React.FC = () => {
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
     };
 
-    if (!isStarted) return <LoadingSpinner message="กำลังเตรียมข้อสอบ..." />;
+    if (isLoadingQuestions || !selectedSet) return <LoadingSpinner message="กำลังเตรียมข้อสอบ..." />;
 
     return (
         <div className="max-w-3xl mx-auto p-4">
