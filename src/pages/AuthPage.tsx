@@ -5,6 +5,7 @@ import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import { useQuizContext } from '../context/QuizContext';
 import { useNotification } from '../context/NotificationContext';
+import LoadingSpinner from '../components/LoadingSpinner'; // 1. Import LoadingSpinner
 
 const ForgotPasswordModal: React.FC<{
     isOpen: boolean;
@@ -70,7 +71,8 @@ const ForgotPasswordModal: React.FC<{
 
 const AuthPage: React.FC = () => {
   const [isLoginView, setIsLoginView] = useState(true);
-  const { departments } = useQuizContext();
+  // 2. ดึง 'loading' มาจาก useQuizContext
+  const { departments, loading: isQuizContextLoading } = useQuizContext();
   const { showNotification } = useNotification();
 
   const [email, setEmail] = useState('');
@@ -130,6 +132,11 @@ const AuthPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // 3. ถ้าข้อมูลพื้นฐานกำลังโหลดอยู่ ให้แสดงหน้า Loading Spinner
+  if (isQuizContextLoading) {
+    return <LoadingSpinner message="กำลังเตรียมข้อมูล..." />;
+  }
 
   const formInputStyle = "w-full px-4 py-3 bg-gray-100 border border-gray-300 rounded-xl text-gray-900 focus:ring-2 focus:ring-red-500 focus:border-red-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white";
   const formLabelStyle = "block text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2";
