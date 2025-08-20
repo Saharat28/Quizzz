@@ -19,7 +19,7 @@ import AddQuestion from './components/AddQuestion';
 import ManageQuestions from './components/ManageQuestions';
 import ManageDepartments from './components/ManageDepartments';
 import ScoreReport from './components/ScoreReport';
-import ManageUsers from './components/ManageUsers'; // <-- เพิ่มบรรทัดนี้
+import ManageUsers from './components/ManageUsers';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -35,7 +35,7 @@ const ThemeToggleButton = () => {
     return (
         <button 
             onClick={toggleTheme}
-            className="flex items-center justify-center w-10 h-10 text-gray-300 bg-gray-800/80 backdrop-blur-sm border border-gray-700 rounded-xl hover:bg-gray-700/90 transition-colors"
+            className="flex items-center justify-center w-10 h-10 text-gray-400 bg-white/80 dark:text-gray-300 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-300 dark:border-gray-700 rounded-xl hover:bg-gray-200/90 dark:hover:bg-gray-700/90 transition-colors"
             title="Toggle Theme"
         >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
@@ -50,7 +50,7 @@ function AppContent() {
       <div className="min-h-screen bg-white text-gray-900 dark:bg-[#010b13] dark:text-gray-300 transition-colors duration-300">
         <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
           <ThemeToggleButton />
-          <Link to="/profile" className="flex items-center space-x-2 text-gray-800 bg-gray-200/80 dark:text-gray-300 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-300 dark:border-gray-700 px-3 py-2 rounded-xl hover:bg-gray-300/90 dark:hover:bg-gray-700/90 transition-colors">
+          <Link to="/profile" className="flex items-center space-x-2 text-gray-800 bg-white/80 dark:text-gray-300 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-300 dark:border-gray-700 px-3 py-2 rounded-xl hover:bg-gray-200/90 dark:hover:bg-gray-700/90 transition-colors">
             <User className="w-5 h-5 text-red-500" />
             <span className="font-medium">{userProfile!.name}</span>
           </Link>
@@ -61,7 +61,7 @@ function AppContent() {
         </div>
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <header className="text-center mb-12 pt-16">
-            <Link to="/"><div className="inline-flex items-center justify-center w-20 h-20 bg-[#d93327] rounded-2xl mb-6 shadow-lg shadow-red-900/20"><BookOpen className="w-10 h-10 text-white" /></div></Link>
+            <Link to="/"><div className="inline-flex items-center justify-center w-20 h-20 bg-[#d93327] rounded-2xl mb-6 shadow-lg shadow-red-500/20 dark:shadow-red-900/20"><BookOpen className="w-10 h-10 text-white" /></div></Link>
             <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-[#d93327] to-red-500 bg-clip-text text-transparent mb-4">คลังข้อสอบออนไลน์ MASARU</h1>
             <p className="text-xl text-gray-500 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">พัฒนาทักษะและความรู้ของคุณได้ทุกที่ ทุกเวลา</p>
           </header>
@@ -108,11 +108,13 @@ function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
-        <QuizProvider>
-          <AuthProvider>
-              <AppRouter />
-          </AuthProvider>
-        </QuizProvider>
+        {/* --- START: แก้ไขลำดับที่นี่ --- */}
+        <AuthProvider>
+            <QuizProvider>
+                <AppRouter />
+            </QuizProvider>
+        </AuthProvider>
+        {/* --- END: แก้ไขลำดับที่นี่ --- */}
       </NotificationProvider>
     </ThemeProvider>
   );
