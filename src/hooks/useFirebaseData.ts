@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '../context/AuthContext'; // 1. Import useAuth เข้ามา
 import {
   departmentsService,
   quizSetsService,
@@ -21,17 +22,25 @@ interface PaginatedData<T> {
   loading: boolean;
   loadingMore: boolean;
 }
+
 const ITEMS_PER_PAGE = 15;
 
 export const useFirebaseData = () => {
+  const { userProfile } = useAuth(); // 2. ดึงข้อมูล userProfile มาใช้
+
   const [departments, setDepartments] = useState<FirebaseDepartment[]>([]);
   const [quizSets, setQuizSets] = useState<FirebaseQuizSet[]>([]);
   const [scores, setScores] = useState<FirebaseScore[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const [questionsPaginated, setQuestionsPaginated] = useState<PaginatedData<FirebaseQuestion>>({
-    data: [], lastDoc: null, hasMore: true, loading: true, loadingMore: false,
+    data: [],
+    lastDoc: null,
+    hasMore: true,
+    loading: true,
+    loadingMore: false,
   });
 
   const updateQuizSetCount = (setId: string, amount: number) => {
@@ -60,9 +69,11 @@ export const useFirebaseData = () => {
 
   const fetchMoreQuestions = useCallback(async () => {
     if (questionsPaginated.loadingMore || !questionsPaginated.hasMore) return;
+
     try {
       setQuestionsPaginated(prev => ({ ...prev, loadingMore: true }));
       const { data, lastVisible } = await questionsService.getPaginated('createdAt', ITEMS_PER_PAGE, questionsPaginated.lastDoc);
+      
       setQuestionsPaginated(prev => ({
         ...prev,
         data: [...prev.data, ...data.map(convertTimestamps)],
@@ -81,28 +92,48 @@ export const useFirebaseData = () => {
     try {
       setLoading(true);
       setError(null);
-      const [departmentsData, setsData, scoresData, usersData] = await Promise.all([
+      
+      // 3. แก้ไขตรรกะการดึงข้อมูล
+      const isAdmin = userProfile?.role === 'admin';
+
+      const dataPromises: Promise<any>[] = [
         departmentsService.getAll(),
         quizSetsService.getAll(),
-        scoresService.getAll(),
-        usersService.getAll(),
-      ]);
+      ];
+
+      if (isAdmin) {
+        dataPromises.push(scoresService.getAll());
+        dataPromises.push(usersService.getAll());
+      }
+
+      const [departmentsData, setsData, scoresData, usersData] = await Promise.all(dataPromises);
+      
       setDepartments(departmentsData);
       setQuizSets(setsData.map(convertTimestamps));
-      setScores(scoresData.map(convertTimestamps));
-      setUsers(usersData);
+
+      if (scoresData) {
+        setScores(scoresData.map(convertTimestamps));
+      }
+      if (usersData) {
+        setUsers(usersData);
+      }
+
     } catch (err) {
       console.error('Error loading data:', err);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userProfile]); // 4. เพิ่ม userProfile เข้าไปใน dependency array
 
   useEffect(() => {
-    loadInitialData();
-    fetchInitialQuestions();
-  }, [loadInitialData, fetchInitialQuestions]);
+    // 5. รอให้ userProfile พร้อมใช้งานก่อน ถึงจะเริ่มดึงข้อมูล
+    // (userProfile === null หมายถึง guest, userProfile ที่มี object หมายถึง user ที่ล็อกอินแล้ว)
+    if (userProfile !== undefined) {
+        loadInitialData();
+        fetchInitialQuestions();
+    }
+  }, [loadInitialData, fetchInitialQuestions, userProfile]);
 
   const addQuestion = useCallback(async (question: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>) => {
     const id = await questionsService.add(question);
