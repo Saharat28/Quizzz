@@ -177,7 +177,7 @@ const AuthPage: React.FC = () => {
         ) : (
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
-              <label className={formLabelStyle}>ชื่อ - นามสกุล</label>
+              <label className={formLabelStyle}>ชื่อ - นามสกุล (ไม่ต้องใส่คำนำหน้า)</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)} className={formInputStyle} required />
             </div>
             <div>
