@@ -23,8 +23,33 @@ import { db } from '../config/firebase';
 // --- Type Definitions ---
 export type QuestionType = 'multiple_choice_single' | 'multiple_choice_multiple' | 'true_false' | 'fill_in_blank';
 export interface FirebaseDepartment { id: string; name: string; }
-export interface FirebaseQuizSet { id?: string; name: string; description: string; isActive: boolean; timeLimit: number; questionCount: number; createdAt: Date | Timestamp; instantFeedback?: boolean; }
-export interface FirebaseQuestion { id?: string; setId: string; type: QuestionType; text: string; imageUrl?: string; options?: string[]; correctAnswer: string | string[]; correctCount: number; incorrectCount: number; createdAt: Date | Timestamp; }
+
+export interface FirebaseQuizSet { 
+  id?: string; 
+  name: string; 
+  description: string; 
+  isActive: boolean; 
+  timeLimit: number; 
+  questionCount: number; 
+  createdAt: Date | Timestamp; 
+  instantFeedback?: boolean; 
+  isSurvey?: boolean; // --- MODIFIED ---: เพิ่ม field นี้
+}
+
+export interface FirebaseQuestion { 
+  id?: string; 
+  setId: string; 
+  type: QuestionType; 
+  text: string; 
+  imageUrl?: string; 
+  options?: string[]; 
+  correctAnswer: string | string[]; 
+  correctCount: number; 
+  incorrectCount: number; 
+  createdAt: Date | Timestamp; 
+  points?: number; // --- MODIFIED ---: เพิ่ม field นี้
+}
+
 export interface FirebaseScore { id?: string; userId: string; userName: string; department: string; setId: string; setName: string; score: number; totalQuestions: number; percentage: number; userAnswers: Record<string, any>; questionOrder?: string[]; cheatAttempts?: number; penaltyPoints?: number; timestamp: Date | Timestamp; }
 export interface UserProfile { uid: string; name: string; department: string; email: string; role: 'admin' | 'user';}
 export const convertTimestamps = <T extends { createdAt?: any; timestamp?: any }>(item: T): T => {
@@ -103,14 +128,11 @@ export const quizSetsService = {
 
 export const questionsService = {
   ...createService<FirebaseQuestion>('questions'),
-
-  // --- เพิ่มฟังก์ชันใหม่ที่นี่ ---
   async getAllBySetId(setId: string): Promise<FirebaseQuestion[]> {
     const q = query(collection(db, 'questions'), where('setId', '==', setId));
     const querySnapshot = await getDocs(q);
     return querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as FirebaseQuestion));
   },
-
   async add(data: Omit<FirebaseQuestion, 'id' | 'createdAt' | 'correctCount' | 'incorrectCount'>): Promise<string> {
     const batch = writeBatch(db);
     const questionRef = doc(collection(db, 'questions'));

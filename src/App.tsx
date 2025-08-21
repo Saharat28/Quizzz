@@ -15,12 +15,16 @@ import Dashboard from './components/Dashboard';
 import Quiz from './components/Quiz';
 import QuizSetSelection from './components/QuizSetSelection';
 import ManageQuizSets from './components/ManageQuizSets';
-import AddQuestion from './components/AddQuestion';
 import ManageQuestions from './components/ManageQuestions';
 import ManageDepartments from './components/ManageDepartments';
 import ScoreReport from './components/ScoreReport';
 import ManageUsers from './components/ManageUsers';
 import AnalyticsDashboard from './components/AnalyticsDashboard';
+import SurveyReport from './components/SurveyReport';
+import AddQuestionChoice from './pages/AddQuestionChoice';
+import AddQuizQuestion from './pages/AddQuizQuestion';
+import AddSurveyQuestion from './pages/AddSurveyQuestion';
+
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
   const { userProfile } = useAuth();
@@ -75,11 +79,14 @@ function AppContent() {
               <Route path="/quiz/:setId" element={<Quiz />} />
               <Route path="/scores" element={<AdminRoute><ScoreReport /></AdminRoute>} />
               <Route path="/manage-sets" element={<AdminRoute><ManageQuizSets /></AdminRoute>} />
-              <Route path="/add-question" element={<AdminRoute><AddQuestion /></AdminRoute>} />
               <Route path="/manage-questions" element={<AdminRoute><ManageQuestions /></AdminRoute>} />
               <Route path="/manage-departments" element={<AdminRoute><ManageDepartments /></AdminRoute>} />
               <Route path="/manage-users" element={<AdminRoute><ManageUsers /></AdminRoute>} />
               <Route path="/analytics" element={<AdminRoute><AnalyticsDashboard /></AdminRoute>} />
+              <Route path="/survey-report" element={<AdminRoute><SurveyReport /></AdminRoute>} />
+              <Route path="/add-question" element={<AdminRoute><AddQuestionChoice /></AdminRoute>} />
+              <Route path="/add-quiz-question" element={<AdminRoute><AddQuizQuestion /></AdminRoute>} />
+              <Route path="/add-survey-question" element={<AdminRoute><AddSurveyQuestion /></AdminRoute>} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
@@ -108,13 +115,11 @@ function App() {
   return (
     <ThemeProvider>
       <NotificationProvider>
-        {/* --- START: แก้ไขลำดับที่นี่ --- */}
         <AuthProvider>
             <QuizProvider>
                 <AppRouter />
             </QuizProvider>
         </AuthProvider>
-        {/* --- END: แก้ไขลำดับที่นี่ --- */}
       </NotificationProvider>
     </ThemeProvider>
   );

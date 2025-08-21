@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Plus, Users, ClipboardList, Trophy, TrendingUp, Building2, BookCopy, BarChartHorizontal, TrendingDown, ListChecks, UserCog, PieChart } from 'lucide-react';
+import { Play, Plus, Users, ClipboardList, Trophy, TrendingUp, Building2, BookCopy, BarChartHorizontal, TrendingDown, ListChecks, UserCog, PieChart, FileText } from 'lucide-react'; // --- MODIFIED ---
 import { useQuizContext } from '../context/QuizContext';
 import type { FirebaseScore } from '../services/firebaseService';
 
@@ -77,12 +77,17 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
 
   useEffect(() => {
     if (scores && scores.length > 0) {
-      const sortedTop = [...scores].sort((a, b) => (b.percentage ?? 0) - (a.percentage ?? 0)).slice(0, 10);
+      // --- MODIFIED --- Filter out survey scores for leaderboard
+      const nonSurveyScores = scores.filter(score => {
+        const set = quizSets.find(s => s.id === score.setId);
+        return set && !set.isSurvey;
+      });
+      const sortedTop = [...nonSurveyScores].sort((a, b) => (b.percentage ?? 0) - (a.percentage ?? 0)).slice(0, 10);
       setLeaderboard(sortedTop as LeaderboardEntry[]);
-      const sortedBottom = [...scores].sort((a, b) => (a.percentage ?? 0) - (b.percentage ?? 0)).slice(0, 10);
+      const sortedBottom = [...nonSurveyScores].sort((a, b) => (a.percentage ?? 0) - (b.percentage ?? 0)).slice(0, 10);
       setBottomLeaderboard(sortedBottom as LeaderboardEntry[]);
     }
-  }, [scores]);
+  }, [scores, quizSets]);
 
   const totalQuizSets = quizSets?.length || 0;
   const totalTakers = new Set(scores.map(s => s.userId)).size;
@@ -101,6 +106,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
     { title: 'จัดการแผนก', description: 'เพิ่ม/ลบ/แก้ไขแผนก', icon: Building2, action: () => navigate('/manage-departments') },
     { title: 'จัดการผู้ใช้งาน', description: 'ดู แก้ไข หรือลบผู้ใช้งาน', icon: UserCog, action: () => navigate('/manage-users') },
     { title: 'วิเคราะห์ข้อมูล', description: 'ดูข้อมูลสรุปและกราฟต่างๆ', icon: PieChart, action: () => navigate('/analytics') },
+    { title: 'ผลแบบสอบถาม', description: 'ดูผลสรุปจากแบบสอบถาม', icon: FileText, action: () => navigate('/survey-report') }, // --- ADDED ---
   ];
 
   return (

@@ -40,7 +40,7 @@ export const useFirebaseData = () => {
   });
 
   const fetchInitialQuestions = useCallback(async () => {
-    if (!currentUser) { // ไม่ต้องโหลดถ้ายังไม่ได้ล็อกอิน
+    if (!currentUser) {
         setQuestionsPaginated({ data: [], lastDoc: null, hasMore: false, loading: false, loadingMore: false });
         return;
     };
@@ -120,11 +120,18 @@ export const useFirebaseData = () => {
     setQuestionsPaginated(prev => ({ ...prev, data: prev.data.map(q => (q.id === id ? { ...q, ...updates } : q)) }));
   }, []);
 
-  const deleteQuestion = useCallback(async (question: FirebaseQuestion) => {
-    await questionsService.deleteSingle(question);
-    updateQuizSetCount(question.setId, -1);
-    setQuestionsPaginated(prev => ({ ...prev, data: prev.data.filter(q => q.id !== question.id) }));
-  }, []);
+  // --- MODIFIED START ---
+  const deleteQuestion = useCallback(async (id: string) => {
+    const questionToDelete = questionsPaginated.data.find(q => q.id === id);
+    if (!questionToDelete) {
+      console.error("Cannot delete: Question not found in state.");
+      return;
+    }
+    await questionsService.deleteSingle(questionToDelete);
+    updateQuizSetCount(questionToDelete.setId, -1);
+    setQuestionsPaginated(prev => ({ ...prev, data: prev.data.filter(q => q.id !== id) }));
+  }, [questionsPaginated.data]);
+  // --- MODIFIED END ---
 
   const deleteMultipleQuestions = useCallback(async (ids: string[]) => {
     await questionsService.deleteMultiple(ids);

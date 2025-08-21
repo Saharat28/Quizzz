@@ -5,16 +5,20 @@ import { useQuizContext } from '../context/QuizContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
-import { FirebaseQuestion, questionsService } from '../services/firebaseService';
+import { FirebaseQuestion, FirebaseQuizSet, questionsService } from '../services/firebaseService'; // --- MODIFIED ---
 import { checkAnswer } from '../utils/quizUtils';
 
+// --- MODIFIED START ---
+// 1. เพิ่ม selectedSet เข้าไปใน Props
 const QuestionRenderer: React.FC<{
     question: FirebaseQuestion;
     index: number;
     userAnswer: any;
     onAnswer: (questionId: string, answer: any) => void;
     instantFeedback: boolean;
-}> = ({ question, index, userAnswer, onAnswer, instantFeedback }) => {
+    selectedSet: FirebaseQuizSet | null; 
+}> = ({ question, index, userAnswer, onAnswer, instantFeedback, selectedSet }) => {
+// --- MODIFIED END ---
 
     const hasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer !== '';
     const isCorrect = hasAnswered ? checkAnswer(question, userAnswer) : false;
@@ -93,7 +97,12 @@ const QuestionRenderer: React.FC<{
 
     return (
         <div id={`question-card-${question.id}`} className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 md:p-8 scroll-mt-24 dark:bg-gray-900/50 dark:border-gray-800">
-            <h3 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white leading-relaxed mb-4"><span className="text-gray-400 dark:text-gray-500 mr-2">{index + 1}.</span>{question.text}</h3>
+            <h3 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white leading-relaxed mb-4">
+                <span className="text-gray-400 dark:text-gray-500 mr-2">{index + 1}.</span>
+                {question.text}
+                {/* --- MODIFIED: Now it can access selectedSet correctly --- */}
+                {selectedSet && !selectedSet.isSurvey && <span className="text-sm font-normal text-gray-400 ml-2">({question.points || 1} คะแนน)</span>}
+            </h3>
             {question.imageUrl && (
                 <div className="mb-6">
                     <img src={question.imageUrl} alt="Question illustration" className="max-w-full max-h-80 mx-auto rounded-lg" />
@@ -154,7 +163,8 @@ const Quiz: React.FC = () => {
         }
     }, [isLoadingQuestions, questions, selectedSet, isStarted]);
 
-    const finishQuiz = useCallback(async (forced = false) => {
+    // --- MODIFIED ---: Removed unused 'forced' parameter
+    const finishQuiz = useCallback(async () => {
         if (isFinishingRef.current) return;
         isFinishingRef.current = true;
         if (!currentUser || !userProfile) {
@@ -166,11 +176,32 @@ const Quiz: React.FC = () => {
         setIsStarted(false);
         try {
             let rawScore = 0;
-            questions.forEach(q => { if (checkAnswer(q, answers[q.id!])) { rawScore++; } });
+            if (selectedSet && !selectedSet.isSurvey) {
+                questions.forEach(q => { 
+                    if (checkAnswer(q, answers[q.id!])) { 
+                        rawScore += (q.points || 1); 
+                    } 
+                });
+            }
+
             const finalScore = Math.max(0, rawScore - penaltyPoints);
-            const totalQuestions = questions.length;
-            const percentage = totalQuestions > 0 ? (finalScore / totalQuestions) * 100 : 0;
-            const newScoreId = await addScore({ userName: userProfile.name, userId: userProfile.uid, score: finalScore, totalQuestions, percentage, setId: setId!, setName: selectedSet?.name || 'ทั่วไป', department: userProfile.department, cheatAttempts, penaltyPoints, userAnswers: answers, questionOrder: questions.map(q => q.id!), });
+            const totalPossiblePoints = questions.reduce((sum, q) => sum + (q.points || 1), 0);
+            const percentage = totalPossiblePoints > 0 ? (finalScore / totalPossiblePoints) * 100 : 0;
+            
+            const newScoreId = await addScore({ 
+                userName: userProfile.name, 
+                userId: userProfile.uid, 
+                score: finalScore, 
+                totalQuestions: totalPossiblePoints,
+                percentage, 
+                setId: setId!, 
+                setName: selectedSet?.name || 'ทั่วไป', 
+                department: userProfile.department, 
+                cheatAttempts, 
+                penaltyPoints, 
+                userAnswers: answers, 
+                questionOrder: questions.map(q => q.id!), 
+            });
             navigate(`/review/${newScoreId}`);
         } catch (error) {
             console.error("Error finishing quiz:", error);
@@ -182,9 +213,9 @@ const Quiz: React.FC = () => {
 
     const handleSubmitAttempt = () => {
         if (!isStarted || isFinishing) return;
-        const unansweredCount = questions.length - Object.keys(answers).filter(key => answers[key] !== undefined && answers[key] !== null && answers[key] !== '').length;
+        const unansweredCount = questions.length - Object.keys(answers).filter(key => answers[key] !== undefined && answers[key] !== null && `${answers[key]}`.trim() !== '').length;
         if (unansweredCount > 0) {
-            const firstUnanswered = questions.find(q => answers[q.id!] === undefined || answers[q.id!] === null || answers[q.id!] === '');
+            const firstUnanswered = questions.find(q => answers[q.id!] === undefined || answers[q.id!] === null || `${answers[q.id!]}`.trim() === '');
             showConfirmation('ยังทำข้อสอบไม่ครบ', `คุณยังไม่ได้ตอบ ${unansweredCount} ข้อ ต้องการส่งคำตอบเลยหรือไม่?`, () => finishQuiz());
             if (firstUnanswered) document.getElementById(`question-card-${firstUnanswered.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
@@ -203,24 +234,24 @@ const Quiz: React.FC = () => {
     }, [isStarted]);
 
     useEffect(() => {
-        if (!isStarted || isFinishing) return;
+        if (!isStarted || isFinishing || (selectedSet && selectedSet.isSurvey)) return;
         if (cheatAttempts > 0 && cheatAttempts !== lastCheatAttemptHandled.current) {
             lastCheatAttemptHandled.current = cheatAttempts;
             switch (cheatAttempts) {
                 case 1: showNotification('คำเตือน! (ครั้งที่ 1)', 'ตรวจพบการออกนอกหน้าต่างข้อสอบ หากทำอีกจะถูกหักคะแนน', 'error'); break;
                 case 2: setPenaltyPoints(p => p + 2); showNotification('ถูกหักคะแนน! (ครั้งที่ 2)', 'คุณถูกหัก 2 คะแนน', 'error'); break;
                 case 3: setPenaltyPoints(p => p + 3); showNotification('ถูกหักเพิ่ม! (ครั้งที่ 3)', 'คุณถูกหักเพิ่ม 3 คะแนน', 'error'); break;
-                case 4: showNotification('ส่งคำตอบอัตโนมัติ!', 'ออกนอกหน้าต่างเกินกำหนด ระบบได้ส่งคำตอบของคุณแล้ว', 'error'); finishQuiz(true); break;
+                case 4: showNotification('ส่งคำตอบอัตโนมัติ!', 'ออกนอกหน้าต่างเกินกำหนด ระบบได้ส่งคำตอบของคุณแล้ว', 'error'); finishQuiz(); break;
             }
         }
-    }, [cheatAttempts, isStarted, isFinishing, showNotification, finishQuiz]);
+    }, [cheatAttempts, isStarted, isFinishing, showNotification, finishQuiz, selectedSet]);
 
     useEffect(() => {
         let timer: NodeJS.Timeout;
         if (isStarted && timeRemaining > 0) {
             timer = setTimeout(() => setTimeRemaining(p => p - 1), 1000);
         } else if (isStarted && timeRemaining <= 0) {
-            finishQuiz(true);
+            finishQuiz();
         }
         return () => clearTimeout(timer);
     }, [timeRemaining, isStarted, finishQuiz]);
@@ -247,19 +278,43 @@ const Quiz: React.FC = () => {
                         <p className="text-sm text-gray-500 dark:text-gray-400">{userProfile?.name}</p>
                     </div>
                     <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2 text-gray-700 dark:text-gray-300"><Clock className="w-5 h-5" /><span className={`font-semibold text-lg ${timeRemaining < 300 && isStarted ? 'text-red-500 animate-pulse' : 'text-gray-900 dark:text-white'}`}>{formatTime(timeRemaining)}</span></div>
-                        <button onClick={handleSubmitAttempt} disabled={isFinishing} className="px-5 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"><CheckCircle className="w-5 h-5" /><span>ส่งคำตอบ</span></button>
+                        {!selectedSet.isSurvey && (
+                            <div className="flex items-center space-x-2 text-gray-700 dark:text-gray-300">
+                                <Clock className="w-5 h-5" />
+                                <span className={`font-semibold text-lg ${timeRemaining < 300 && isStarted ? 'text-red-500 animate-pulse' : 'text-gray-900 dark:text-white'}`}>
+                                    {formatTime(timeRemaining)}
+                                </span>
+                            </div>
+                        )}
+                        <button onClick={handleSubmitAttempt} disabled={isFinishing} className="px-5 py-2 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <CheckCircle className="w-5 h-5" />
+                            <span>ส่งคำตอบ</span>
+                        </button>
                     </div>
                 </div>
             </div>
             <div className="space-y-10">
                 {questions.map((question, index) => (
-                    <QuestionRenderer key={question.id} question={question} index={index} userAnswer={answers[question.id!]} onAnswer={handleAnswer} instantFeedback={instantFeedbackEnabled} />
+                    // --- MODIFIED START ---
+                    // 3. ส่ง selectedSet ลงไปเป็น prop
+                    <QuestionRenderer 
+                        key={question.id} 
+                        question={question} 
+                        index={index} 
+                        userAnswer={answers[question.id!]} 
+                        onAnswer={handleAnswer} 
+                        instantFeedback={instantFeedbackEnabled}
+                        selectedSet={selectedSet}
+                    />
+                    // --- MODIFIED END ---
                 ))}
             </div>
             <div className="mt-12 text-center">
                 <p className="text-gray-500 dark:text-gray-500 mb-4">ทำครบทุกข้อแล้วใช่ไหม?</p>
-                <button onClick={handleSubmitAttempt} disabled={isFinishing} className="px-10 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 flex items-center space-x-2 mx-auto text-lg disabled:opacity-50 disabled:cursor-not-allowed"><CheckCircle className="w-6 h-6" /><span>ส่งคำตอบทั้งหมด</span></button>
+                <button onClick={handleSubmitAttempt} disabled={isFinishing} className="px-10 py-4 bg-green-600 text-white rounded-xl font-semibold hover:bg-green-700 flex items-center space-x-2 mx-auto text-lg disabled:opacity-50 disabled:cursor-not-allowed">
+                    <CheckCircle className="w-6 h-6" />
+                    <span>ส่งคำตอบทั้งหมด</span>
+                </button>
             </div>
         </div>
     );

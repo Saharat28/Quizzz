@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, DollarSign } from 'lucide-react'; // --- MODIFIED ---
 import type { FirebaseQuestion } from '../../services/firebaseService';
+import { useQuizContext } from '../../context/QuizContext'; // --- ADDED ---
 
 // --- Helper Component: MCQ Options Editor (for Multiple Choice) ---
 const McqOptionsEditor: React.FC<{
@@ -133,15 +134,22 @@ const EditQuestionModal: React.FC<{
 }> = ({ question, onClose, onSave }) => {
     const [editedQuestion, setEditedQuestion] = useState(question);
     const [isSaving, setIsSaving] = useState(false);
+    const { quizSets } = useQuizContext(); // --- ADDED ---
+
+    // --- ADDED ---
+    const parentSet = quizSets.find(set => set.id === editedQuestion.setId);
 
     const handleSave = async () => {
         setIsSaving(true);
+        // --- MODIFIED START ---
         const updates: Partial<FirebaseQuestion> = {
             text: editedQuestion.text,
             imageUrl: editedQuestion.imageUrl,
             options: editedQuestion.options,
-            correctAnswer: editedQuestion.correctAnswer
+            correctAnswer: editedQuestion.correctAnswer,
+            points: editedQuestion.points
         };
+        // --- MODIFIED END ---
         await onSave(question.id!, updates);
         setIsSaving(false);
         onClose();
@@ -174,6 +182,23 @@ const EditQuestionModal: React.FC<{
                             placeholder="https://example.com/image.png"
                         />
                     </div>
+                    {/* --- ADDED START --- */}
+                    {parentSet && !parentSet.isSurvey && (
+                        <div>
+                            <label className={formLabelStyle}>คะแนนสำหรับข้อนี้</label>
+                             <div className="flex items-center space-x-2">
+                                <DollarSign className="w-6 h-6 text-gray-400 dark:text-gray-500" />
+                                <input 
+                                    type="number"
+                                    value={editedQuestion.points || 1}
+                                    onChange={(e) => setEditedQuestion(prev => ({ ...prev, points: Number(e.target.value) >= 1 ? Number(e.target.value) : 1 }))}
+                                    className={formInputStyle}
+                                    min="1"
+                                />
+                            </div>
+                        </div>
+                    )}
+                    {/* --- ADDED END --- */}
 
                     <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                         <AnswerEditor question={editedQuestion} onQuestionChange={setEditedQuestion} />
