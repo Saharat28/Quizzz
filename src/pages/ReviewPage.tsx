@@ -56,7 +56,7 @@ const AnswerRenderer: React.FC<{
 const ReviewPage: React.FC = () => {
     const navigate = useNavigate();
     const { scoreId } = useParams<{ scoreId: string }>();
-    const { scores, loading, quizSets } = useQuizContext(); // --- MODIFIED ---
+    const { scores, loading, quizSets } = useQuizContext();
     const { userProfile } = useAuth();
 
     const [quizQuestions, setQuizQuestions] = useState<FirebaseQuestion[]>([]);
@@ -68,7 +68,6 @@ const ReviewPage: React.FC = () => {
         return scores.find(s => s.id === scoreId);
     }, [scoreId, scores]);
 
-    // --- ADDED ---
     const parentSet = useMemo(() => {
         if (!score) return null;
         return quizSets.find(set => set.id === score.setId);
@@ -114,8 +113,8 @@ const ReviewPage: React.FC = () => {
         );
     }
     
-    const isOwner = userProfile?.uid === score.userId; // --- ADDED ---
-    const canViewPage = isAdmin || isOwner; // --- MODIFIED ---
+    const isOwner = userProfile?.uid === score.userId;
+    const canViewPage = isAdmin || isOwner;
     if (!canViewPage) {
          return (
             <div className="text-center p-8">
@@ -125,8 +124,9 @@ const ReviewPage: React.FC = () => {
         );
     }
     
-    // --- ADDED ---
-    const canViewAnswers = isAdmin || isOwner;
+    // --- BUG FIX ---
+    // This is the corrected logic to decide whether to show the correct answers.
+    const canViewAnswers = isAdmin || (isOwner && parentSet?.instantFeedback === true);
 
     return (
         <div className="max-w-4xl mx-auto">
@@ -147,14 +147,12 @@ const ReviewPage: React.FC = () => {
                     <span className="font-bold text-gray-900 dark:text-white"> {score.setName}</span>
                 </h2>
                 <p className="text-lg text-gray-500 dark:text-gray-400 mt-1">ผู้ทำ: {score.userName}</p>
-                {/* --- MODIFIED START --- */}
                 {!parentSet?.isSurvey && (
                     <>
                         <p className="text-5xl font-bold text-red-600 dark:text-red-400 my-4">{score.score} คะแนน</p>
                         <p className="text-lg text-gray-600 dark:text-gray-400">เปอร์เซ็นต์ที่ทำได้: {score.percentage.toFixed(1)}%</p>
                     </>
                 )}
-                {/* --- MODIFIED END --- */}
             </div>
 
             <div className="space-y-6">
@@ -171,7 +169,7 @@ const ReviewPage: React.FC = () => {
                         <AnswerRenderer 
                             question={question} 
                             userAnswer={score.userAnswers?.[question.id!]}
-                            showCorrectAnswer={canViewAnswers && !parentSet?.isSurvey} // --- MODIFIED ---
+                            showCorrectAnswer={canViewAnswers}
                         />
                     </div>
                 ))}
