@@ -24,6 +24,7 @@ import SurveyReport from './components/SurveyReport';
 import AddQuestionChoice from './pages/AddQuestionChoice';
 import AddQuizQuestion from './pages/AddQuizQuestion';
 import AddSurveyQuestion from './pages/AddSurveyQuestion';
+import UserScoreSummary from './components/UserScoreSummary';
 
 
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -84,6 +85,7 @@ function AppContent() {
               <Route path="/manage-users" element={<AdminRoute><ManageUsers /></AdminRoute>} />
               <Route path="/analytics" element={<AdminRoute><AnalyticsDashboard /></AdminRoute>} />
               <Route path="/survey-report" element={<AdminRoute><SurveyReport /></AdminRoute>} />
+              <Route path="/user-summary" element={<AdminRoute><UserScoreSummary /></AdminRoute>} />
               <Route path="/add-question" element={<AdminRoute><AddQuestionChoice /></AdminRoute>} />
               <Route path="/add-quiz-question" element={<AdminRoute><AddQuizQuestion /></AdminRoute>} />
               <Route path="/add-survey-question" element={<AdminRoute><AddSurveyQuestion /></AdminRoute>} />

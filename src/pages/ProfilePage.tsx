@@ -54,37 +54,37 @@ const ProfilePage: React.FC = () => {
     try {
         await updateUserProfile(uid, updates);
         setViewedUserProfile(prev => prev ? { ...prev, ...updates } : null);
-        showNotification('Success', 'Profile information updated successfully.', 'success');
-    } catch (error) { showNotification('Error', 'Could not update profile information.', 'error'); }
+        showNotification('สำเร็จ', 'อัปเดตข้อมูลโปรไฟล์เรียบร้อย', 'success');
+    } catch (error) { showNotification('ผิดพลาด', 'ไม่สามารถอัปเดตข้อมูลโปรไฟล์ได้', 'error'); }
   };
 
   const handleDeleteUser = () => {
     if (!viewedUserProfile) return;
-    showConfirmation('Confirm User Deletion', `Are you sure you want to delete the account for "${viewedUserProfile.name}" and all their test history?`, async () => {
+    showConfirmation('ยืนยันการลบบัญชี', `ต้องการลบบัญชีของ "${viewedUserProfile.name}" และประวัติการสอบทั้งหมดหรือไม่?`, async () => {
         try {
             await deleteUser(viewedUserProfile.uid);
-            showNotification('Success', `Account for ${viewedUserProfile.name} has been deleted.`, 'success');
+            showNotification('สำเร็จ', `ลบบัญชีของ ${viewedUserProfile.name} เรียบร้อยแล้ว`, 'success');
             navigate('/scores');
-        } catch (error) { showNotification('Error', 'Could not delete the account.', 'error'); }
+        } catch (error) { showNotification('ผิดพลาด', 'ไม่สามารถลบบัญชีได้', 'error'); }
     });
   };
 
   const handleDeleteScore = (score: FirebaseScore) => {
-    showConfirmation('Confirm Deletion', `Are you sure you want to delete the test record for "${score.setName}"?`, async () => {
+    showConfirmation('ยืนยันการลบประวัติ', `ต้องการลบประวัติการสอบของชุด "${score.setName}" หรือไม่?`, async () => {
         setDeletingScoreId(score.id!);
         try {
             await deleteScore(score.id!);
-            showNotification('Success', 'Test record deleted successfully.', 'success');
-        } catch (error) { showNotification('Error', 'Could not delete the record.', 'error'); } 
+            showNotification('สำเร็จ', 'ลบประวัติการสอบเรียบร้อย', 'success');
+        } catch (error) { showNotification('ผิดพลาด', 'ไม่สามารถลบประวัติได้', 'error'); } 
         finally { setDeletingScoreId(null); }
     });
   };
 
-  if (loading) return <LoadingSpinner message="Loading profile..." />;
+  if (loading) return <LoadingSpinner message="กำลังโหลดโปรไฟล์..." />;
   if (!viewedUserProfile) return (
     <div className="max-w-5xl mx-auto text-center p-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">User Not Found</h1>
-        <button onClick={() => navigate(-1)} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">Go Back</button>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">ไม่พบผู้ใช้</h1>
+        <button onClick={() => navigate('/')} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">กลับหน้าหลัก</button>
     </div>
   );
 
@@ -97,11 +97,12 @@ const ProfilePage: React.FC = () => {
       {isEditNameModalOpen && viewedUserProfile && <EditNameModal user={viewedUserProfile} onClose={() => setIsEditNameModalOpen(false)} onSave={handleSaveProfile} />}
       
       <div className="flex items-center justify-between mb-8">
-        <button onClick={() => navigate(-1)} className="flex items-center space-x-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
+        {/* --- MODIFIED --- */}
+        <button onClick={() => navigate('/')} className="flex items-center space-x-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
             <ArrowLeft className="w-5 h-5" />
-            <span>Go Back</span>
+            <span>กลับหน้าหลัก</span>
         </button>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{isOwnProfile ? 'Your Profile' : `Profile of ${viewedUserProfile.name}`}</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">{isOwnProfile ? 'โปรไฟล์ของคุณ' : `โปรไฟล์ของ ${viewedUserProfile.name}`}</h1>
         <div className="w-36"></div>
       </div>
 
@@ -115,7 +116,7 @@ const ProfilePage: React.FC = () => {
                     <div className="flex items-center gap-3">
                         <h2 className="text-3xl font-bold text-gray-900 dark:text-white">{viewedUserProfile.name}</h2>
                         {isOwnProfile && (
-                            <button onClick={() => setIsEditNameModalOpen(true)} className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-200 rounded-lg dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50" title="Edit Name">
+                            <button onClick={() => setIsEditNameModalOpen(true)} className="p-2 text-gray-400 hover:text-gray-800 hover:bg-gray-200 rounded-lg dark:text-gray-400 dark:hover:text-white dark:hover:bg-gray-700/50" title="แก้ไขชื่อ">
                                 <Edit className="w-5 h-5" />
                             </button>
                         )}
@@ -129,10 +130,10 @@ const ProfilePage: React.FC = () => {
             </div>
             {isAdmin && (
                 <div className="flex space-x-2">
-                    <button onClick={() => setIsAdminEditModalOpen(true)} className="p-2 text-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-lg" title="Edit Profile (Admin)">
+                    <button onClick={() => setIsAdminEditModalOpen(true)} className="p-2 text-blue-500 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-lg" title="แก้ไขโปรไฟล์ (Admin)">
                         <Edit className="w-5 h-5" />
                     </button>
-                    {!isOwnProfile && <button onClick={handleDeleteUser} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg" title="Delete User Account"><Trash2 className="w-5 h-5" /></button>}
+                    {!isOwnProfile && <button onClick={handleDeleteUser} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg" title="ลบบัญชีผู้ใช้"><Trash2 className="w-5 h-5" /></button>}
                 </div>
             )}
         </div>
@@ -142,7 +143,7 @@ const ProfilePage: React.FC = () => {
         <div className="p-6 border-b border-gray-200 dark:border-gray-800">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center space-x-3">
                 <BarChart3 className="w-6 h-6 text-red-500 dark:text-red-400" />
-                <span>Test History</span>
+                <span>ประวัติการทำข้อสอบ</span>
             </h2>
         </div>
         <div className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -152,13 +153,13 @@ const ProfilePage: React.FC = () => {
                 <div className="flex-1">
                   <h3 className="text-xl font-semibold text-gray-800 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{score.setName}</h3>
                   <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500 dark:text-gray-500">
-                    <div className="flex items-center space-x-1"><Clock className="w-4 h-4" /><span>Taken on: {score.timestamp instanceof Date ? score.timestamp.toLocaleDateString('en-CA') : 'N/A'}</span></div>
-                    {(score.cheatAttempts ?? 0) > 0 && (<div className="flex items-center space-x-1 text-yellow-600 dark:text-yellow-400"><ShieldAlert className="w-4 h-4" /><span>Tab switches: {score.cheatAttempts} (Penalty: {score.penaltyPoints} pts)</span></div>)}
+                    <div className="flex items-center space-x-1"><Clock className="w-4 h-4" /><span>ทำเมื่อ: {score.timestamp instanceof Date ? score.timestamp.toLocaleDateString('th-TH') : 'N/A'}</span></div>
+                    {(score.cheatAttempts ?? 0) > 0 && (<div className="flex items-center space-x-1 text-yellow-600 dark:text-yellow-400"><ShieldAlert className="w-4 h-4" /><span>สลับหน้าจอ: {score.cheatAttempts} ครั้ง (หัก {score.penaltyPoints} คะแนน)</span></div>)}
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
                     <div className="text-right">
-                      <p className="text-xl font-bold text-gray-900 dark:text-white">{score.score}/{score.totalQuestions} pts</p>
+                      <p className="text-xl font-bold text-gray-900 dark:text-white">{score.score}/{score.totalQuestions} คะแนน</p>
                       <span className={`px-3 py-1 inline-flex text-xs font-semibold rounded-full 
                             ${typeof score.percentage === 'number' && score.percentage >= 80 ? 'bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300' : 
                              typeof score.percentage === 'number' && score.percentage >= 60 ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300' : 
@@ -167,7 +168,7 @@ const ProfilePage: React.FC = () => {
                       </span>
                     </div>
                     {isAdmin ? (
-                        <button onClick={(e) => { e.preventDefault(); handleDeleteScore(score); }} disabled={deletingScoreId === score.id} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg" title="Delete this record">
+                        <button onClick={(e) => { e.preventDefault(); handleDeleteScore(score); }} disabled={deletingScoreId === score.id} className="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/50 rounded-lg" title="ลบประวัติการสอบนี้">
                             {deletingScoreId === score.id ? <Loader2 className="w-5 h-5 animate-spin" /> : <Trash2 className="w-5 h-5" />}
                         </button>
                     ) : (
@@ -179,8 +180,8 @@ const ProfilePage: React.FC = () => {
           ) : (
             <div className="p-12 text-center text-gray-500">
               <HelpCircle className="w-12 h-12 mx-auto mb-4" />
-              <p className="text-lg">No test history available.</p>
-              {isOwnProfile && (<button onClick={() => navigate('/quiz-selection')} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">Start a Quiz!</button>)}
+              <p className="text-lg">ยังไม่มีประวัติการทำข้อสอบ</p>
+              {isOwnProfile && (<button onClick={() => navigate('/quiz-selection')} className="mt-4 px-5 py-2 bg-[#d93327] text-white rounded-xl">เริ่มทำข้อสอบ!</button>)}
             </div>
           )}
         </div>

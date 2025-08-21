@@ -1,19 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Plus, Users, ClipboardList, Trophy, TrendingUp, Building2, BookCopy, BarChartHorizontal, TrendingDown, ListChecks, UserCog, PieChart, FileText } from 'lucide-react'; // --- MODIFIED ---
+import { Play, Plus, Users, ClipboardList, Trophy, TrendingUp, Building2, BookCopy, BarChartHorizontal, TrendingDown, ListChecks, UserCog, PieChart, FileText, Award } from 'lucide-react';
 import { useQuizContext } from '../context/QuizContext';
-import type { FirebaseScore } from '../services/firebaseService';
+import { FirebaseScore, scoresService } from '../services/firebaseService';
 
 interface DashboardProps {
   userRole: 'admin' | 'user';
 }
 
-interface LeaderboardEntry extends FirebaseScore {}
-
 const LeaderboardTable: React.FC<{
     title: string;
     icon: React.ElementType;
-    data: LeaderboardEntry[];
+    data: FirebaseScore[];
     iconColor: string;
 }> = ({ title, icon: Icon, data, iconColor }) => {
     return (
@@ -72,22 +70,38 @@ const LeaderboardTable: React.FC<{
 const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
   const navigate = useNavigate();
   const { scores, quizSets } = useQuizContext();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [bottomLeaderboard, setBottomLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboard, setLeaderboard] = useState<FirebaseScore[]>([]);
+  const [bottomLeaderboard, setBottomLeaderboard] = useState<FirebaseScore[]>([]);
+  const [isLoadingLeaderboard, setIsLoadingLeaderboard] = useState(true);
 
   useEffect(() => {
-    if (scores && scores.length > 0) {
-      // --- MODIFIED --- Filter out survey scores for leaderboard
-      const nonSurveyScores = scores.filter(score => {
-        const set = quizSets.find(s => s.id === score.setId);
-        return set && !set.isSurvey;
-      });
-      const sortedTop = [...nonSurveyScores].sort((a, b) => (b.percentage ?? 0) - (a.percentage ?? 0)).slice(0, 10);
-      setLeaderboard(sortedTop as LeaderboardEntry[]);
-      const sortedBottom = [...nonSurveyScores].sort((a, b) => (a.percentage ?? 0) - (b.percentage ?? 0)).slice(0, 10);
-      setBottomLeaderboard(sortedBottom as LeaderboardEntry[]);
+    const fetchLeaderboards = async () => {
+      setIsLoadingLeaderboard(true);
+      try {
+        const topScoresData = await scoresService.getTopScores(10);
+        const bottomScoresData = await scoresService.getBottomScores(10);
+        
+        const quizSetIds = new Set(quizSets.filter(qs => !qs.isSurvey).map(qs => qs.id));
+        setLeaderboard(topScoresData.filter(score => quizSetIds.has(score.setId)));
+        setBottomLeaderboard(bottomScoresData.filter(score => quizSetIds.has(score.setId)));
+
+      } catch (error) {
+        console.error("Failed to fetch leaderboards:", error);
+        setLeaderboard([]);
+        setBottomLeaderboard([]);
+      } finally {
+        setIsLoadingLeaderboard(false);
+      }
+    };
+    
+    if (quizSets.length > 0) {
+        fetchLeaderboards();
+    } else {
+        setIsLoadingLeaderboard(false);
+        setLeaderboard([]);
+        setBottomLeaderboard([]);
     }
-  }, [scores, quizSets]);
+  }, [quizSets]);
 
   const totalQuizSets = quizSets?.length || 0;
   const totalTakers = new Set(scores.map(s => s.userId)).size;
@@ -106,7 +120,8 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
     { title: 'จัดการแผนก', description: 'เพิ่ม/ลบ/แก้ไขแผนก', icon: Building2, action: () => navigate('/manage-departments') },
     { title: 'จัดการผู้ใช้งาน', description: 'ดู แก้ไข หรือลบผู้ใช้งาน', icon: UserCog, action: () => navigate('/manage-users') },
     { title: 'วิเคราะห์ข้อมูล', description: 'ดูข้อมูลสรุปและกราฟต่างๆ', icon: PieChart, action: () => navigate('/analytics') },
-    { title: 'ผลแบบสอบถาม', description: 'ดูผลสรุปจากแบบสอบถาม', icon: FileText, action: () => navigate('/survey-report') }, // --- ADDED ---
+    { title: 'ผลแบบสอบถาม', description: 'ดูผลสรุปจากแบบสอบถาม', icon: FileText, action: () => navigate('/survey-report') },
+    { title: 'สรุปคะแนนรวม', description: 'ดูอันดับคะแนนรวมของทุกคน', icon: Award, action: () => navigate('/user-summary') },
   ];
 
   return (
@@ -127,6 +142,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
         </div>
       )}
 
+      {/* --- THIS IS THE MISSING CARD --- */}
       <div className="space-y-6">
         <button onClick={primaryAction.action} className="group w-full bg-white border border-gray-200 p-8 rounded-2xl shadow-sm hover:border-red-300 hover:shadow-md dark:bg-gray-900/50 dark:border-gray-800 dark:hover:shadow-red-900/30 dark:hover:border-red-800/50 transition-all duration-300 text-left flex items-center space-x-6">
           <div className="bg-red-100 text-[#d93327] p-4 inline-block rounded-2xl dark:bg-red-900/30">
@@ -137,6 +153,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
             <p className="text-gray-500 dark:text-gray-400 text-lg">{primaryAction.description}</p>
           </div>
         </button>
+      {/* --- END OF MISSING CARD SECTION --- */}
 
         {userRole === 'admin' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -166,20 +183,24 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
                   </button>
               )}
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <LeaderboardTable 
-                  title="🏆 10 อันดับคะแนนสูงสุด" 
-                  icon={Trophy} 
-                  data={leaderboard} 
-                  iconColor="text-yellow-500 dark:text-yellow-400"
-              />
-              <LeaderboardTable 
-                  title="📉 10 อันดับคะแนนต่ำสุด" 
-                  icon={TrendingDown} 
-                  data={bottomLeaderboard} 
-                  iconColor="text-blue-500 dark:text-blue-400"
-              />
-          </div>
+          {isLoadingLeaderboard ? (
+            <div className="p-12 text-center text-gray-500">กำลังโหลด Leaderboard...</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <LeaderboardTable 
+                    title="🏆 10 อันดับคะแนนสูงสุด" 
+                    icon={Trophy} 
+                    data={leaderboard} 
+                    iconColor="text-yellow-500 dark:text-yellow-400"
+                />
+                <LeaderboardTable 
+                    title="📉 10 อันดับคะแนนต่ำสุด" 
+                    icon={TrendingDown} 
+                    data={bottomLeaderboard} 
+                    iconColor="text-blue-500 dark:text-blue-400"
+                />
+            </div>
+          )}
       </div>
 
     </div>

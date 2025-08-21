@@ -14,7 +14,7 @@ import {
   increment,
   orderBy,
   limit,
-  startAfter,
+  startAfter, // ตรวจสอบว่ามีการ import startAfter มาจาก firebase/firestore
   getDoc,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
@@ -33,7 +33,7 @@ export interface FirebaseQuizSet {
   questionCount: number; 
   createdAt: Date | Timestamp; 
   instantFeedback?: boolean; 
-  isSurvey?: boolean; // --- MODIFIED ---: เพิ่ม field นี้
+  isSurvey?: boolean;
 }
 
 export interface FirebaseQuestion { 
@@ -47,7 +47,7 @@ export interface FirebaseQuestion {
   correctCount: number; 
   incorrectCount: number; 
   createdAt: Date | Timestamp; 
-  points?: number; // --- MODIFIED ---: เพิ่ม field นี้
+  points?: number;
 }
 
 export interface FirebaseScore { id?: string; userId: string; userName: string; department: string; setId: string; setName: string; score: number; totalQuestions: number; percentage: number; userAnswers: Record<string, any>; questionOrder?: string[]; cheatAttempts?: number; penaltyPoints?: number; timestamp: Date | Timestamp; }
@@ -66,6 +66,7 @@ const createService = <T extends { id?: string }>(collectionName: string) => {
       const snapshot = await getDocs(collectionRef);
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
     },
+    // --- THIS IS THE CORRECT IMPLEMENTATION ---
     async getPaginated(orderByField: string, limitCount: number, startAfterDoc: QueryDocumentSnapshot | null = null): Promise<{ data: T[]; lastVisible: QueryDocumentSnapshot | null }> {
         let q = query(collectionRef, orderBy(orderByField, 'desc'), limit(limitCount));
         if (startAfterDoc) {
@@ -203,5 +204,23 @@ export const scoresService = {
     const collectionRef = collection(db, 'scores');
     const docRef = await addDoc(collectionRef, { ...data, timestamp: serverTimestamp() });
     return docRef.id;
+  },
+  async getByUserId(userId: string): Promise<FirebaseScore[]> {
+    const collectionRef = collection(db, 'scores');
+    const q = query(collectionRef, where('userId', '==', userId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as FirebaseScore));
+  },
+  async getTopScores(limitCount: number): Promise<FirebaseScore[]> {
+    const collectionRef = collection(db, 'scores');
+    const q = query(collectionRef, orderBy('percentage', 'desc'), limit(limitCount));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as FirebaseScore));
+  },
+  async getBottomScores(limitCount: number): Promise<FirebaseScore[]> {
+    const collectionRef = collection(db, 'scores');
+    const q = query(collectionRef, orderBy('percentage', 'asc'), limit(limitCount));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as FirebaseScore));
   },
 };
