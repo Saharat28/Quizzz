@@ -125,8 +125,8 @@ const ReviewPage: React.FC = () => {
     }
     
     // --- BUG FIX ---
-    // This is the corrected logic to decide whether to show the correct answers.
-    const canViewAnswers = isAdmin || (isOwner && parentSet?.instantFeedback === true);
+    // Correct logic: Only show answers if it's NOT a survey AND (isAdmin OR (isOwner AND instantFeedback is on))
+    const canViewAnswers = !parentSet?.isSurvey && (isAdmin || (isOwner && parentSet?.instantFeedback === true));
 
     return (
         <div className="max-w-4xl mx-auto">
