@@ -5,11 +5,19 @@ import { useQuizContext } from '../context/QuizContext';
 import { useNotification } from '../context/NotificationContext';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
-import { FirebaseQuestion, FirebaseQuizSet, questionsService } from '../services/firebaseService'; // --- MODIFIED ---
+import { FirebaseQuestion, FirebaseQuizSet, questionsService } from '../services/firebaseService';
 import { checkAnswer } from '../utils/quizUtils';
 
-// --- MODIFIED START ---
-// 1. เพิ่ม selectedSet เข้าไปใน Props
+// ฟังก์ชันสำหรับสุ่ม Array (Fisher-Yates Shuffle)
+const shuffleArray = <T,>(array: T[]): T[] => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+};
+
 const QuestionRenderer: React.FC<{
     question: FirebaseQuestion;
     index: number;
@@ -18,7 +26,6 @@ const QuestionRenderer: React.FC<{
     instantFeedback: boolean;
     selectedSet: FirebaseQuizSet | null; 
 }> = ({ question, index, userAnswer, onAnswer, instantFeedback, selectedSet }) => {
-// --- MODIFIED END ---
 
     const hasAnswered = userAnswer !== undefined && userAnswer !== null && userAnswer !== '';
     const isCorrect = hasAnswered ? checkAnswer(question, userAnswer) : false;
@@ -100,7 +107,6 @@ const QuestionRenderer: React.FC<{
             <h3 className="text-xl md:text-2xl font-semibold text-gray-900 dark:text-white leading-relaxed mb-4">
                 <span className="text-gray-400 dark:text-gray-500 mr-2">{index + 1}.</span>
                 {question.text}
-                {/* --- MODIFIED: Now it can access selectedSet correctly --- */}
                 {selectedSet && !selectedSet.isSurvey && <span className="text-sm font-normal text-gray-400 ml-2">({question.points || 1} คะแนน)</span>}
             </h3>
             {question.imageUrl && (
@@ -141,7 +147,16 @@ const Quiz: React.FC = () => {
                 setIsLoadingQuestions(true);
                 try {
                     const fetchedQuestions = await questionsService.getAllBySetId(setId);
-                    const shuffledQuestions = [...fetchedQuestions].sort(() => Math.random() - 0.5);
+                    
+                    const processedQuestions = fetchedQuestions.map(q => {
+                        if (q.options && q.options.length > 0) {
+                            return { ...q, options: shuffleArray(q.options) };
+                        }
+                        return q;
+                    });
+
+                    const shuffledQuestions = shuffleArray(processedQuestions);
+                    
                     setQuestions(shuffledQuestions);
                 } catch (error) {
                     console.error("Failed to fetch questions for quiz:", error);
@@ -163,7 +178,6 @@ const Quiz: React.FC = () => {
         }
     }, [isLoadingQuestions, questions, selectedSet, isStarted]);
 
-    // --- MODIFIED ---: Removed unused 'forced' parameter
     const finishQuiz = useCallback(async () => {
         if (isFinishingRef.current) return;
         isFinishingRef.current = true;
@@ -295,8 +309,6 @@ const Quiz: React.FC = () => {
             </div>
             <div className="space-y-10">
                 {questions.map((question, index) => (
-                    // --- MODIFIED START ---
-                    // 3. ส่ง selectedSet ลงไปเป็น prop
                     <QuestionRenderer 
                         key={question.id} 
                         question={question} 
@@ -306,7 +318,6 @@ const Quiz: React.FC = () => {
                         instantFeedback={instantFeedbackEnabled}
                         selectedSet={selectedSet}
                     />
-                    // --- MODIFIED END ---
                 ))}
             </div>
             <div className="mt-12 text-center">
