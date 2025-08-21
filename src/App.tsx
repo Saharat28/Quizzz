@@ -92,7 +92,7 @@ function AppContent() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
-          <footer className="text-center mt-16 py-8 border-t border-gray-300 dark:border-gray-800"><p className="text-gray-600 dark:text-gray-500 font-medium">Masaru PowerTool - ระบบจัดการข้อสอบออนไลน์</p></footer>
+          <footer className="text-center mt-16 py-8 border-t border-gray-300 dark:border-gray-800"><p className="text-gray-600 dark:text-gray-500 font-medium">Masaru PowerTools - ระบบจัดการข้อสอบออนไลน์</p></footer>
         </div>
       </div>
   );
