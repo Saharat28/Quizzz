@@ -3,10 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen, Users, HelpCircle, BarChart2 } from 'lucide-react';
 import { useQuizContext } from '../context/QuizContext';
 import { FirebaseQuestion } from '../services/firebaseService';
+import ResponseDetailModal from './common/ResponseDetailModal'; // --- 1. IMPORT MODAL ---
 
+// --- 2. MODIFY DATA STRUCTURE ---
 interface AnswerStat {
     count: number;
     percentage: number;
+    users: string[]; 
 }
 
 interface QuestionResult {
@@ -19,6 +22,9 @@ const SurveyReport: React.FC = () => {
     const navigate = useNavigate();
     const { quizSets, scores, questionsPaginated } = useQuizContext();
     const [selectedSetId, setSelectedSetId] = useState<string>('');
+    
+    // --- 3. ADD STATE FOR MODAL ---
+    const [modalData, setModalData] = useState<{ questionText: string; answerOption: string; users: string[] } | null>(null);
 
     const surveySets = useMemo(() => {
         return quizSets.filter(set => set.isSurvey);
@@ -33,32 +39,38 @@ const SurveyReport: React.FC = () => {
         const relevantQuestions = questionsPaginated.data.filter(q => q.setId === selectedSetId);
         if (relevantQuestions.length === 0) return [];
 
+        // --- 4. MODIFY CALCULATION LOGIC ---
         const results: QuestionResult[] = relevantQuestions.map(question => {
-            const answerCounts: Record<string, number> = {};
+            const answerCollector: Record<string, string[]> = {}; // Key: answer, Value: array of user names
             let totalResponses = 0;
 
             relevantScores.forEach(score => {
                 const userAnswer = score.userAnswers?.[question.id!];
-                if (userAnswer !== undefined && userAnswer !== null) {
+                if (userAnswer !== undefined && userAnswer !== null && userAnswer !== '') {
                     totalResponses++;
                     const answers = Array.isArray(userAnswer) ? userAnswer : [userAnswer];
                     answers.forEach(ans => {
-                        answerCounts[ans] = (answerCounts[ans] || 0) + 1;
+                        if (!answerCollector[ans]) {
+                            answerCollector[ans] = [];
+                        }
+                        answerCollector[ans].push(score.userName);
                     });
                 }
             });
 
-            const answerPercentages: Record<string, AnswerStat> = {};
-            for (const ans in answerCounts) {
-                answerPercentages[ans] = {
-                    count: answerCounts[ans],
-                    percentage: totalResponses > 0 ? (answerCounts[ans] / totalResponses) * 100 : 0,
+            const finalAnswers: Record<string, AnswerStat> = {};
+            for (const ans in answerCollector) {
+                const users = answerCollector[ans];
+                finalAnswers[ans] = {
+                    count: users.length,
+                    percentage: totalResponses > 0 ? (users.length / totalResponses) * 100 : 0,
+                    users: users.sort(),
                 };
             }
             
             return {
                 question,
-                answers: answerPercentages,
+                answers: finalAnswers,
                 totalResponses,
             };
         });
@@ -67,6 +79,15 @@ const SurveyReport: React.FC = () => {
     }, [selectedSetId, scores, questionsPaginated.data]);
 
     const selectedSet = quizSets.find(set => set.id === selectedSetId);
+    
+    // --- 5. ADD MODAL HANDLERS ---
+    const handleOpenModal = (questionText: string, answerOption: string, users: string[]) => {
+        setModalData({ questionText, answerOption, users });
+    };
+
+    const handleCloseModal = () => {
+        setModalData(null);
+    };
 
     return (
         <div className="max-w-5xl mx-auto">
@@ -103,35 +124,39 @@ const SurveyReport: React.FC = () => {
                         <p className="text-gray-500 dark:text-gray-400 mt-2">{selectedSet?.description}</p>
                         <div className="mt-4 inline-flex items-center space-x-2 text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full">
                             <Users className="w-5 h-5" />
-                            <span className="font-semibold">{surveyResults[0]?.totalResponses || 0}</span>
+                            <span className="font-semibold">{scores.filter(s => s.setId === selectedSetId).length}</span>
                             <span>ผู้ตอบ</span>
                         </div>
                     </div>
                 
                     <div className="space-y-6">
-                        {surveyResults.map(({ question, answers, totalResponses }, index) => (
+                        {surveyResults.map(({ question, answers }, index) => (
                             <div key={question.id} className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 dark:bg-gray-900/50 dark:border-gray-800">
                                 <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
                                     <span className="text-gray-500 mr-2">{index + 1}.</span>{question.text}
                                 </h3>
                                 
                                 <div className="space-y-3 mt-4">
-                                    {question.options?.map(option => (
-                                        <div key={option}>
-                                            <div className="flex justify-between items-center mb-1 text-gray-700 dark:text-gray-300">
-                                                <span>{option}</span>
-                                                <span className="font-semibold">
-                                                    {answers[option]?.count || 0} คน ({answers[option]?.percentage.toFixed(1) || '0.0'}%)
-                                                </span>
+                                    {question.options?.map(option => {
+                                        const stat = answers[option] || { count: 0, percentage: 0, users: [] };
+                                        return (
+                                            // --- 6. MAKE RESULT BAR CLICKABLE ---
+                                            <div key={option} onClick={() => handleOpenModal(question.text, option, stat.users)} className="cursor-pointer group">
+                                                <div className="flex justify-between items-center mb-1 text-gray-700 dark:text-gray-300">
+                                                    <span>{option}</span>
+                                                    <span className="font-semibold">
+                                                        {stat.count} คน ({stat.percentage.toFixed(1)}%)
+                                                    </span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700 group-hover:opacity-80 transition">
+                                                    <div 
+                                                        className="bg-red-500 h-4 rounded-full transition-all duration-500" 
+                                                        style={{ width: `${stat.percentage}%` }}
+                                                    ></div>
+                                                </div>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-4 dark:bg-gray-700">
-                                                <div 
-                                                    className="bg-red-500 h-4 rounded-full" 
-                                                    style={{ width: `${answers[option]?.percentage || 0}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     {question.type === 'fill_in_blank' && (
                                         <p className="text-gray-500 italic">ผลลัพธ์สำหรับคำถามปลายเปิดยังไม่รองรับในหน้านี้</p>
                                     )}
@@ -141,6 +166,15 @@ const SurveyReport: React.FC = () => {
                     </div>
                 </div>
             )}
+            
+            {/* --- 7. RENDER THE MODAL --- */}
+            <ResponseDetailModal
+                isOpen={!!modalData}
+                onClose={handleCloseModal}
+                questionText={modalData?.questionText || ''}
+                answerOption={modalData?.answerOption || ''}
+                users={modalData?.users || []}
+            />
         </div>
     );
 };
