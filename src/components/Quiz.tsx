@@ -239,13 +239,13 @@ const Quiz: React.FC = () => {
 
     useEffect(() => {
         const handleBlur = () => {
-            if (isStarted && !isFinishingRef.current) {
+            if (isStarted && !isFinishingRef.current && !selectedSet?.isSurvey) {
                 setCheatAttempts(prev => prev + 1);
             }
         };
         window.addEventListener('blur', handleBlur);
         return () => window.removeEventListener('blur', handleBlur);
-    }, [isStarted]);
+    }, [isStarted, selectedSet]);
 
     useEffect(() => {
         if (!isStarted || isFinishing || (selectedSet && selectedSet.isSurvey)) return;
@@ -261,14 +261,15 @@ const Quiz: React.FC = () => {
     }, [cheatAttempts, isStarted, isFinishing, showNotification, finishQuiz, selectedSet]);
 
     useEffect(() => {
+        if (!isStarted || (selectedSet?.isSurvey)) return;
         let timer: NodeJS.Timeout;
-        if (isStarted && timeRemaining > 0) {
+        if (timeRemaining > 0) {
             timer = setTimeout(() => setTimeRemaining(p => p - 1), 1000);
-        } else if (isStarted && timeRemaining <= 0) {
+        } else if (timeRemaining <= 0) {
             finishQuiz();
         }
         return () => clearTimeout(timer);
-    }, [timeRemaining, isStarted, finishQuiz]);
+    }, [timeRemaining, isStarted, finishQuiz, selectedSet]);
 
     const handleAnswer = (questionId: string, answer: any) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
@@ -284,7 +285,7 @@ const Quiz: React.FC = () => {
 
     return (
         <div className="max-w-3xl mx-auto p-4">
-            {isFinishing && <LoadingSpinner message="กำลังส่งคำตอบและตรวจคะแนน..." />}
+            {isFinishing && <LoadingSpinner message="กำลังส่งคำตอบ..." />}
             <div className="sticky top-4 z-10 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg p-4 mb-8">
                 <div className="flex items-center justify-between">
                     <div className="text-left">
