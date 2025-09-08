@@ -62,40 +62,38 @@ export const useFirebaseData = () => {
   }, [currentUser]);
 
   const loadInitialData = useCallback(async () => {
-    if (!currentUser) {
-        setLoading(false);
-        setScores([]);
-        setUsers([]);
-        return;
-    }
-
     try {
       setLoading(true);
       setError(null);
+      
+      // 1. ดึงข้อมูลแผนกก่อนเสมอสำหรับหน้าสมัครสมาชิก
+      const departmentsData = await departmentsService.getAll();
+      setDepartments(departmentsData);
+
+      // 2. หยุดการทำงานถ้ายังไม่มีการล็อกอิน
+      if (!currentUser) {
+          setLoading(false);
+          setScores([]);
+          setUsers([]);
+          return;
+      }
+      
       const isAdmin = userProfile?.role === 'admin';
       
-      const basePromises: Promise<any>[] = [
-        departmentsService.getAll(),
+      const userSpecificPromises: Promise<any>[] = [
         quizSetsService.getAll(),
       ];
 
-      let adminPromises: Promise<any>[] = [];
       if (isAdmin) {
-        adminPromises = [
-            scoresService.getAll(),
-            usersService.getAll(),
-        ];
+        userSpecificPromises.push(scoresService.getAll());
+        userSpecificPromises.push(usersService.getAll());
       } else {
-        adminPromises = [
-            scoresService.getByUserId(currentUser.uid),
-            Promise.resolve([]),
-        ];
+        userSpecificPromises.push(scoresService.getByUserId(currentUser.uid));
+        userSpecificPromises.push(Promise.resolve([]));
       }
       
-      const allPromises = [...basePromises, ...adminPromises];
-      const [departmentsData, setsData, scoresData, usersData] = await Promise.all(allPromises);
+      const [setsData, scoresData, usersData] = await Promise.all(userSpecificPromises);
       
-      setDepartments(departmentsData);
       setQuizSets(setsData.map(convertTimestamps));
       setScores(scoresData.map(convertTimestamps));
       if (isAdmin) {
