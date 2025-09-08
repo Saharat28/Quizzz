@@ -63,7 +63,11 @@ const ManageQuestions: React.FC = () => {
           await deleteMultipleQuestions(selectedQuestions);
           showNotification('สำเร็จ', 'ลบคำถามที่เลือกเรียบร้อยแล้ว', 'success');
           setSelectedQuestions([]);
-        } catch (error) { showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถลบคำถามได้', 'error'); }
+        } catch (error) {
+          // --- MODIFIED ---
+          console.error("Bulk delete failed:", error);
+          showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถลบคำถามที่เลือกได้', 'error'); 
+        }
       }, 'warning' 
     );
   };
@@ -125,13 +129,17 @@ const ManageQuestions: React.FC = () => {
                 showNotification('สำเร็จ!', `นำเข้าคำถาม ${newQuestions.length} ข้อเรียบร้อยแล้ว`, 'success');
             });
         } catch (error: any) {
+            // --- MODIFIED ---
+            console.error("Excel import failed:", error);
             showNotification('นำเข้าไม่สำเร็จ', error.message, 'error');
         } finally {
             setIsImporting(false);
             if (event.target) event.target.value = '';
         }
     };
-    reader.onerror = () => {
+    reader.onerror = (error) => {
+        // --- MODIFIED ---
+        console.error("File reader error:", error);
         showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถอ่านไฟล์ได้', 'error');
         setIsImporting(false);
     };
@@ -159,7 +167,11 @@ const ManageQuestions: React.FC = () => {
     try {
         await updateQuestion(id, updates);
         showNotification('สำเร็จ', 'แก้ไขคำถามเรียบร้อยแล้ว', 'success');
-    } catch (error) { showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถแก้ไขคำถามได้', 'error'); }
+    } catch (error) {
+        // --- MODIFIED ---
+        console.error("Save edit failed:", error);
+        showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถแก้ไขคำถามได้', 'error'); 
+    }
   };
 
   const handleDelete = (question: FirebaseQuestion) => {
@@ -168,7 +180,10 @@ const ManageQuestions: React.FC = () => {
             try {
                 await deleteQuestion(question.id!);
                 showNotification('สำเร็จ', 'ลบคำถามเรียบร้อยแล้ว', 'success');
-            } catch (error) { showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถลบคำถามได้', 'error'); } 
+            } catch (error) { 
+                console.error("Delete failed:", error); 
+                showNotification('เกิดข้อผิดพลาด', 'ไม่สามารถลบคำถามได้', 'error'); 
+            } 
             finally { setDeletingQuestionId(null); }
         }, 'warning'
     );

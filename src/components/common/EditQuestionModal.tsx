@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Trash2, DollarSign } from 'lucide-react'; // --- MODIFIED ---
+import { Trash2, DollarSign } from 'lucide-react';
 import type { FirebaseQuestion } from '../../services/firebaseService';
-import { useQuizContext } from '../../context/QuizContext'; // --- ADDED ---
+import { useQuizContext } from '../../context/QuizContext';
 
 // --- Helper Component: MCQ Options Editor (for Multiple Choice) ---
 const McqOptionsEditor: React.FC<{
@@ -134,22 +134,21 @@ const EditQuestionModal: React.FC<{
 }> = ({ question, onClose, onSave }) => {
     const [editedQuestion, setEditedQuestion] = useState(question);
     const [isSaving, setIsSaving] = useState(false);
-    const { quizSets } = useQuizContext(); // --- ADDED ---
+    const { quizSets } = useQuizContext();
 
-    // --- ADDED ---
     const parentSet = quizSets.find(set => set.id === editedQuestion.setId);
 
     const handleSave = async () => {
         setIsSaving(true);
-        // --- MODIFIED START ---
+        
         const updates: Partial<FirebaseQuestion> = {
             text: editedQuestion.text,
             imageUrl: editedQuestion.imageUrl,
             options: editedQuestion.options,
             correctAnswer: editedQuestion.correctAnswer,
-            points: editedQuestion.points
+            points: editedQuestion.points ?? 1, 
         };
-        // --- MODIFIED END ---
+        
         await onSave(question.id!, updates);
         setIsSaving(false);
         onClose();
@@ -182,7 +181,6 @@ const EditQuestionModal: React.FC<{
                             placeholder="https://example.com/image.png"
                         />
                     </div>
-                    {/* --- ADDED START --- */}
                     {parentSet && !parentSet.isSurvey && (
                         <div>
                             <label className={formLabelStyle}>คะแนนสำหรับข้อนี้</label>
@@ -198,7 +196,6 @@ const EditQuestionModal: React.FC<{
                             </div>
                         </div>
                     )}
-                    {/* --- ADDED END --- */}
 
                     <div className="pt-4 mt-4 border-t border-gray-200 dark:border-gray-700">
                         <AnswerEditor question={editedQuestion} onQuestionChange={setEditedQuestion} />
