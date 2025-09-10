@@ -15,7 +15,7 @@ const LeaderboardTable: React.FC<{
     iconColor: string;
 }> = ({ title, icon: Icon, data, iconColor }) => {
     return (
-        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden dark:bg-gray-900/50 dark:border-gray-800">
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden dark:bg-gray-800/60 dark:border-gray-800">
             <div className="p-6 border-b border-gray-200 dark:border-gray-800">
                 <div className="flex items-center space-x-3">
                     <div className={`bg-gray-100 p-3 rounded-xl dark:bg-gray-800`}><Icon className={`w-8 h-8 ${iconColor}`} /></div>
@@ -129,7 +129,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
       {userRole === 'admin' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {statCards.map((stat) => (
-            <div key={stat.title} className="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm dark:bg-gray-900/50 dark:border-gray-800">
+            <div key={stat.title} className="bg-white border border-gray-200 p-8 rounded-2xl shadow-sm dark:bg-gray-800/60 dark:border-gray-800">
               <div className="flex items-center space-x-6">
                 <div className={`bg-red-100 p-4 rounded-xl dark:bg-red-900/30`}><stat.icon className={`w-8 h-8 ${stat.iconColor}`} /></div>
                 <div>
@@ -144,7 +144,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
 
       {/* --- THIS IS THE MISSING CARD --- */}
       <div className="space-y-6">
-        <button onClick={primaryAction.action} className="group w-full bg-white border border-gray-200 p-8 rounded-2xl shadow-sm hover:border-red-300 hover:shadow-md dark:bg-gray-900/50 dark:border-gray-800 dark:hover:shadow-red-900/30 dark:hover:border-red-800/50 transition-all duration-300 text-left flex items-center space-x-6">
+        <button onClick={primaryAction.action} className="group w-full bg-white border border-gray-200 p-8 rounded-2xl shadow-sm hover:border-red-300 hover:shadow-md dark:bg-gray-800/60 dark:border-gray-800 dark:hover:shadow-red-900/30 dark:hover:border-red-800/50 transition-all duration-300 text-left flex items-center space-x-6">
           <div className="bg-red-100 text-[#d93327] p-4 inline-block rounded-2xl dark:bg-red-900/30">
             <primaryAction.icon className="w-10 h-10" />
           </div>
@@ -158,7 +158,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
         {userRole === 'admin' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {secondaryActions.map((button) => (
-              <button key={button.title} onClick={button.action} className="group bg-white border border-gray-200 text-gray-800 p-6 rounded-2xl shadow-sm hover:border-red-300 hover:shadow-md dark:bg-gray-900/50 dark:border-gray-800 dark:text-white dark:hover:shadow-red-900/30 dark:hover:border-red-800/50 transition-all duration-300 text-left">
+              <button key={button.title} onClick={button.action} className="group bg-white border border-gray-200 text-gray-800 p-6 rounded-2xl shadow-sm hover:border-red-500 hover:shadow-md dark:bg-gray-800/60 dark:border-gray-800 dark:text-white dark:hover:shadow-red-700 dark:hover:border-red-800/50 transition-all duration-300 text-left">
                 <div className="bg-red-100 text-[#d93327] p-3 inline-block rounded-xl mb-4 dark:bg-red-900/30">
                   <button.icon className="w-6 h-6" />
                 </div>
@@ -176,7 +176,7 @@ const Dashboard: React.FC<DashboardProps> = ({ userRole }) => {
               {userRole === 'admin' && (
                   <button 
                       onClick={() => navigate('/scores')}
-                      className="flex items-center space-x-2 px-4 py-2 bg-gray-100 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
+                      className="flex items-center space-x-2 px-4 py-2 bg-gray-100 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-200 dark:bg-gray-800/60 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700 dark:hover:text-white transition-colors"
                   >
                       <BarChartHorizontal className="w-5 h-5" />
                       <span>ดูรายงานทั้งหมด</span>

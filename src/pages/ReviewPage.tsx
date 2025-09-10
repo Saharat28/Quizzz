@@ -68,6 +68,11 @@ const ReviewPage: React.FC = () => {
     const [isCleaningUp, setIsCleaningUp] = useState(false);
     const [parentSet, setParentSet] = useState<FirebaseQuizSet | null | undefined>(undefined);
 
+    // This useEffect scrolls the page to the top whenever the component loads.
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, []);
+
     const isAdmin = userProfile?.role === 'admin';
 
     const score = useMemo(() => {

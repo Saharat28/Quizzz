@@ -52,7 +52,7 @@ function AppContent() {
   const { userProfile, logout } = useAuth();
 
   return (
-      <div className="min-h-screen bg-white text-gray-900 dark:bg-[#010b13] dark:text-gray-300 transition-colors duration-300">
+      <div className="min-h-screen bg-gray-200 text-gray-900 dark:bg-[#070514] dark:text-gray-300 transition-colors duration-300">
         <div className="absolute top-4 right-4 z-20 flex items-center space-x-2">
           <ThemeToggleButton />
           <Link to="/profile" className="flex items-center space-x-2 text-gray-800 bg-white/80 dark:text-gray-300 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-300 dark:border-gray-700 px-3 py-2 rounded-xl hover:bg-gray-200/90 dark:hover:bg-gray-700/90 transition-colors">

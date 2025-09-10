@@ -39,7 +39,8 @@ interface QuizContextType {
   deleteMultipleQuestions: (ids: string[]) => Promise<void>;
   updateQuestionStats: (id: string, isCorrect: boolean) => Promise<void>;
   addScore: (score: Omit<FirebaseScore, 'id' | 'timestamp'>) => Promise<string | void>;
-  deleteScore: (id: string) => Promise<void>; // This type definition is crucial
+  deleteScore: (id: string) => Promise<void>;
+  deleteMultipleScores: (ids: string[]) => Promise<void>; // 👈 เพิ่มบรรทัดนี้
   getQuestionsBySetId: (setId: string) => FirebaseQuestion[];
   getScoresBySetId: (setId: string) => FirebaseScore[];
   refreshData: () => Promise<void>;

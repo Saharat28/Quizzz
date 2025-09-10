@@ -196,12 +196,12 @@ const AnalyticsDashboard: React.FC = () => {
     setSortConfig({ key, direction });
   };
   
-  const reversedDepartmentStats = useMemo(() => [...departmentStats].reverse(), [departmentStats]);
+  const reversedDepartmentStats = useMemo(() => [...departmentStats].sort((a,b) => a.averageScore - b.averageScore), [departmentStats]);
 
   const barChartOptions = useMemo(() => {
     const gridColor = theme === 'light' ? '#E5E7EB' : '#374151';
-    const tickColor = theme === 'light' ? '#374151' : '#D1D5DB';
-    const titleColor = theme === 'light' ? '#111827' : '#F9FAFB';
+    const tickColor = theme === 'light' ? '#374151' : '#E5E7EB';
+const titleColor = theme === 'light' ? '#111827' : '#FFFFFF';
     return {
       indexAxis: 'y' as const,
       responsive: true,
@@ -287,6 +287,11 @@ const AnalyticsDashboard: React.FC = () => {
     ],
   };
 
+  const barCount = barChartData.labels.length;
+  const minHeight = 300;
+  const heightPerBar = 35;
+  const chartHeight = Math.max(minHeight, barCount * heightPerBar);
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
@@ -305,7 +310,7 @@ const AnalyticsDashboard: React.FC = () => {
         </h2>
         {departmentStats.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-4 rounded-xl h-96 lg:h-[450px]">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-900 p-4 rounded-xl relative" style={{ height: `${chartHeight}px` }}>
                     <Bar options={barChartOptions} data={barChartData} />
                 </div>
                 <div className="lg:col-span-1">

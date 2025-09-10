@@ -143,7 +143,8 @@ const EditQuestionModal: React.FC<{
         
         const updates: Partial<FirebaseQuestion> = {
             text: editedQuestion.text,
-            imageUrl: editedQuestion.imageUrl,
+            // --- FIX: Default to empty string if imageUrl is undefined/null/falsy ---
+            imageUrl: editedQuestion.imageUrl || '', 
             options: editedQuestion.options,
             correctAnswer: editedQuestion.correctAnswer,
             points: editedQuestion.points ?? 1, 

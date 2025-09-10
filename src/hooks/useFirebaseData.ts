@@ -65,12 +65,9 @@ export const useFirebaseData = () => {
     try {
       setLoading(true);
       setError(null);
-      
-      // 1. ดึงข้อมูลแผนกก่อนเสมอสำหรับหน้าสมัครสมาชิก
       const departmentsData = await departmentsService.getAll();
       setDepartments(departmentsData);
 
-      // 2. หยุดการทำงานถ้ายังไม่มีการล็อกอิน
       if (!currentUser) {
           setLoading(false);
           setScores([]);
@@ -79,11 +76,7 @@ export const useFirebaseData = () => {
       }
       
       const isAdmin = userProfile?.role === 'admin';
-      
-      const userSpecificPromises: Promise<any>[] = [
-        quizSetsService.getAll(),
-      ];
-
+      const userSpecificPromises: Promise<any>[] = [ quizSetsService.getAll() ];
       if (isAdmin) {
         userSpecificPromises.push(scoresService.getAll());
         userSpecificPromises.push(usersService.getAll());
@@ -93,13 +86,11 @@ export const useFirebaseData = () => {
       }
       
       const [setsData, scoresData, usersData] = await Promise.all(userSpecificPromises);
-      
       setQuizSets(setsData.map(convertTimestamps));
       setScores(scoresData.map(convertTimestamps));
       if (isAdmin) {
         setUsers(usersData);
       }
-
     } catch (err) {
       console.error('Error loading data:', err);
       setError('เกิดข้อผิดพลาดในการโหลดข้อมูล');
@@ -132,6 +123,7 @@ export const useFirebaseData = () => {
   const updateQuestionStats = useCallback(async (id: string, isCorrect: boolean) => { await questionsService.updateStats(id, isCorrect); }, []);
   const addScore = useCallback(async (score: Omit<FirebaseScore, 'id' | 'timestamp'>) => { const id = await scoresService.add(score); const newScore = { ...score, id, timestamp: new Date() }; setScores(prev => [newScore, ...prev]); return id; }, []);
   const deleteScore = useCallback(async (id: string) => { await scoresService.delete(id); setScores(prev => prev.filter(score => score.id !== id)); }, []);
+  const deleteMultipleScores = useCallback(async (ids: string[]) => { await scoresService.deleteMultiple(ids); setScores(prev => prev.filter(score => !ids.includes(score.id!))); }, []);
   const updateUserProfile = useCallback(async (uid: string, updates: Partial<UserProfile>) => { await usersService.update(uid, updates); setUsers(prev => prev.map(user => (user.uid === uid ? { ...user, ...updates } : user))); setScores(prevScores => prevScores.map(score => { if (score.userId === uid) { const newScore = { ...score }; if (updates.name) { newScore.userName = updates.name; } if (updates.department) { newScore.department = updates.department; } return newScore; } return score; })); }, []);
   const deleteUser = useCallback(async (uid: string) => { await usersService.delete(uid); setUsers(prev => prev.filter(user => user.uid !== uid)); setScores(prevScores => prevScores.filter(score => score.userId !== uid)); }, []);
   const getScoresBySetId = useCallback((setId: string) => scores.filter(s => s.setId === setId), [scores]);
@@ -144,7 +136,7 @@ export const useFirebaseData = () => {
     addQuizSet, updateQuizSet, deleteQuizSet,
     addQuestion, addMultipleQuestions, updateQuestion,
     deleteQuestion, deleteMultipleQuestions, updateQuestionStats,
-    addScore, deleteScore, getQuestionsBySetId, getScoresBySetId,
+    addScore, deleteScore, deleteMultipleScores, getQuestionsBySetId, getScoresBySetId,
     refreshData, updateUserProfile, deleteUser,
   };
 };

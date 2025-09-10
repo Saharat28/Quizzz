@@ -14,7 +14,7 @@ import {
   increment,
   orderBy,
   limit,
-  startAfter, // ตรวจสอบว่ามีการ import startAfter มาจาก firebase/firestore
+  startAfter,
   getDoc,
   type QueryDocumentSnapshot,
 } from 'firebase/firestore';
@@ -66,7 +66,6 @@ const createService = <T extends { id?: string }>(collectionName: string) => {
       const snapshot = await getDocs(collectionRef);
       return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
     },
-    // --- THIS IS THE CORRECT IMPLEMENTATION ---
     async getPaginated(orderByField: string, limitCount: number, startAfterDoc: QueryDocumentSnapshot | null = null): Promise<{ data: T[]; lastVisible: QueryDocumentSnapshot | null }> {
         let q = query(collectionRef, orderBy(orderByField, 'desc'), limit(limitCount));
         if (startAfterDoc) {
@@ -222,5 +221,15 @@ export const scoresService = {
     const q = query(collectionRef, orderBy('percentage', 'asc'), limit(limitCount));
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as FirebaseScore));
+  },
+  async deleteMultiple(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const batch = writeBatch(db);
+    const collectionRef = collection(db, 'scores');
+    ids.forEach(id => {
+      const docRef = doc(collectionRef, id);
+      batch.delete(docRef);
+    });
+    await batch.commit();
   },
 };
